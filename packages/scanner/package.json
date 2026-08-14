@@ -16,6 +16,6 @@
     "build": "tsc -p tsconfig.json",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "node --test"
+    "test": "npm run build && node --test test/normalize.test.mjs"
   }
 }
