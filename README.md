@@ -2,8 +2,8 @@
 
 > Vietnamese Web Accessibility Scanner with WCAG Guidance
 
-VietA11y is an open-source tool built for Vietnamese developers. It will scan
-one captured state of a web page for automated accessibility issues and provide
+VietA11y is an open-source tool built for Vietnamese developers. It scans one
+captured state of one web page for automated accessibility issues and provides
 curated Vietnamese guidance for selected findings.
 
 Automated scanning cannot prove full WCAG conformance or provide accessibility
@@ -11,14 +11,23 @@ certification.
 
 ## Project status
 
-VietA11y is currently under active development. The scanner package can run one
-framework-independent Playwright and axe-core scan, but it is not connected to
-the web application and is not ready for public arbitrary-URL hosting.
+VietA11y is currently under active development. The local Web MVP accepts one
+HTTP or HTTPS URL, runs the framework-independent Playwright and axe-core
+scanner synchronously, and presents transparent rule, affected-element, and
+impact counts. Findings retain their authoritative axe reference and show
+curated Vietnamese guidance when it exists or an explicit unavailable state
+when it does not.
+
+The Web MVP is intended for local development or controlled self-hosting. It is
+**not ready for public arbitrary-URL hosting**. Exposing URL scanning to
+untrusted users requires the later public-hosting security gate, including the
+network and resource controls that are outside this milestone.
 
 ## Repository structure
 
-- `apps/web`: Next.js application and future web interface.
-- `packages/scanner`: framework-independent TypeScript scanner package shell.
+- `apps/web`: Next.js user interface and synchronous `POST /api/scans` boundary.
+- `packages/scanner`: framework-independent Playwright/axe scanner, report
+  model, normalization, summaries, and Vietnamese guidance lookup.
 
 ## Prerequisites
 
@@ -45,6 +54,11 @@ Start the web application in development mode:
 npm run dev
 ```
 
+Open the local URL printed by Next.js, enter an absolute HTTP or HTTPS URL, and
+submit the form. The scan runs in the server-side Node.js process and returns
+the existing `ScanReport` to the browser. Keep this development server in a
+trusted environment; basic URL input validation is not an SSRF defense.
+
 ## Verification
 
 Run the same checks used by CI:
@@ -57,7 +71,18 @@ npm run build
 ```
 
 Scanner integration tests use deterministic HTTP fixtures served on the local
-loopback interface. They do not scan public websites.
+loopback interface. Web API tests inject deterministic reports and scanner
+errors. The test suite does not scan public websites.
+
+## Current limitations
+
+- Automated results cover one captured state of one page and cannot prove full
+  WCAG conformance or replace manual testing.
+- Only selected axe rules have curated Vietnamese guidance; all other findings
+  remain visible with an honest unavailable state.
+- Scans are synchronous and have no history, accounts, queue, export, numeric
+  score, crawling, authenticated flow, or cancellation.
+- Public-hosting hardening for untrusted arbitrary URLs is not implemented.
 
 ## Goals
 

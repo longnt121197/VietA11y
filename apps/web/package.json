@@ -2,13 +2,16 @@
   "name": "@vieta11y/web",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build --workspace @vieta11y/scanner && node --test --experimental-strip-types test/*.test.mjs"
   },
   "dependencies": {
+    "@vieta11y/scanner": "0.1.0",
     "next": "^16.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

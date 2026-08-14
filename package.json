@@ -9,10 +9,10 @@
   },
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "dev": "npm run dev --workspace @vieta11y/web",
-    "build": "npm run build --workspaces --if-present",
+    "dev": "npm run build --workspace @vieta11y/scanner && npm run dev --workspace @vieta11y/web",
+    "build": "npm run build --workspace @vieta11y/scanner && npm run build --workspace @vieta11y/web",
     "lint": "npm run lint --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "npm run build --workspace @vieta11y/scanner && npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present"
   },
   "devDependencies": {
