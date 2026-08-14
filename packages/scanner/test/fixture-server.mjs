@@ -27,6 +27,14 @@ const pages = {
       <head><meta charset="utf-8"><title>Multiple violations fixture</title></head>
       <body><main><h1>Product search</h1><img src="data:image/gif;base64,R0lGODlhAQABAAAAACw="><input type="text"></main></body>
     </html>`,
+  "/restrictive-csp": `<!doctype html>
+    <html lang="en">
+      <head><meta charset="utf-8"><title>Restrictive CSP fixture</title></head>
+      <body>
+        <main><h1>Product</h1><img src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></main>
+        <script>document.querySelector("img").alt = "Added only if CSP is bypassed";</script>
+      </body>
+    </html>`,
 };
 
 export async function startFixtureServer() {
@@ -59,7 +67,14 @@ export async function startFixtureServer() {
       return;
     }
 
-    response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    const headers = { "content-type": "text/html; charset=utf-8" };
+
+    if (requestUrl.pathname === "/restrictive-csp") {
+      headers["content-security-policy"] =
+        "default-src 'none'; script-src 'self'; img-src data:";
+    }
+
+    response.writeHead(200, headers);
     response.end(page);
   });
 

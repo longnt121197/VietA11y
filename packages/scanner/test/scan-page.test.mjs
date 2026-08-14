@@ -45,6 +45,15 @@ test("normalizes the real axe image-alt violation without raw axe structures", a
   assert.ok(violation.helpUrl?.startsWith("https://dequeuniversity.com/"));
 });
 
+test("injects axe-core on a page with a restrictive CSP", async () => {
+  const report = await scanPage(fixtureServer.url("/restrictive-csp"));
+
+  assert.equal(report.metadata.documentTitle, "Restrictive CSP fixture");
+  assert.ok(
+    report.violations.some(({ ruleId }) => ruleId === "image-alt"),
+  );
+});
+
 test("detects the label and html language rules in focused fixtures", async () => {
   const [inputReport, languageReport] = await Promise.all([
     scanPage(fixtureServer.url("/unlabeled-input")),
@@ -165,13 +174,12 @@ function createFakeBrowser(events, failure) {
     url() {
       return "https://fixture.test/page";
     },
-    async addScriptTag() {
-      events.push("page.addScriptTag");
+    async evaluate() {
+      events.push("page.evaluate");
       if (failure === "axe") {
         throw new Error("fixture axe failure");
       }
-    },
-    async evaluate() {
+
       return { violations: [] };
     },
     async close() {

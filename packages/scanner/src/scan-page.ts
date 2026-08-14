@@ -162,7 +162,7 @@ async function navigate(
 
 async function runAxe(page: Page): Promise<unknown> {
   try {
-    await page.addScriptTag({ content: axe.source });
+    await page.evaluate(axe.source);
 
     return await page.evaluate(async () => {
       const axeApi = (
