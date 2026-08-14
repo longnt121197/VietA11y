@@ -70,9 +70,11 @@ npm test
 npm run build
 ```
 
-Scanner integration tests use deterministic HTTP fixtures served on the local
-loopback interface. Web API tests inject deterministic reports and scanner
-errors. The test suite does not scan public websites.
+Scanner integration and Web MVP browser tests use deterministic HTTP fixtures
+served on the local loopback interface. The browser smoke test starts a local
+Next.js server and exercises the real API/scanner/axe/report path. Other Web API
+tests inject deterministic reports and scanner errors. The test suite does not
+scan public websites.
 
 ## Current limitations
 

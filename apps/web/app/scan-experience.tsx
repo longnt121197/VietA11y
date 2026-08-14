@@ -371,6 +371,7 @@ function ViolationCard({
       <section aria-labelledby={`violation-${index}-nodes`} className="p-5 sm:p-6">
         <h5 id={`violation-${index}-nodes`} className="text-lg font-bold text-slate-950">
           Phần tử bị ảnh hưởng
+          <span className="sr-only"> cho quy tắc {violation.ruleId}</span>
         </h5>
         {violation.nodes.length === 0 ? (
           <p className="mt-3 text-slate-700">Không có chi tiết phần tử.</p>

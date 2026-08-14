@@ -27,6 +27,18 @@ const pages = {
       <head><meta charset="utf-8"><title>Multiple violations fixture</title></head>
       <body><main><h1>Product search</h1><img src="data:image/gif;base64,R0lGODlhAQABAAAAACw="><input type="text"></main></body>
     </html>`,
+  "/web-e2e": `<!doctype html>
+    <html lang="vi">
+      <head><meta charset="utf-8"><title>Web E2E fixture</title></head>
+      <body>
+        <main id="primary-content">
+          <h1>Sản phẩm thử nghiệm</h1>
+          <img id="unsafe-excerpt" data-probe="&lt;script id=&quot;interpreted-probe&quot;&gt;" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">
+          <img id="second-missing-alt" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">
+        </main>
+        <main id="duplicate-content"><p>Nội dung trong mốc chính trùng lặp.</p></main>
+      </body>
+    </html>`,
   "/restrictive-csp": `<!doctype html>
     <html lang="en">
       <head><meta charset="utf-8"><title>Restrictive CSP fixture</title></head>

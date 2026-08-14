@@ -8,7 +8,7 @@
     "build": "next build",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "npm run build --workspace @vieta11y/scanner && node --test --experimental-strip-types test/*.test.mjs"
+    "test": "npm run build --workspace @vieta11y/scanner && npm run build --workspace @vieta11y/web && node --test --experimental-strip-types test/*.test.mjs"
   },
   "dependencies": {
     "@vieta11y/scanner": "0.1.0",
