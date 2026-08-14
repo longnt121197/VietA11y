@@ -43,6 +43,7 @@ test("normalizes the real axe image-alt violation without raw axe structures", a
   assert.equal("passes" in report, false);
   assert.equal("any" in violation.nodes[0], false);
   assert.ok(violation.helpUrl?.startsWith("https://dequeuniversity.com/"));
+  assert.equal(violation.guidance.status, "CURATED");
 });
 
 test("injects axe-core on a page with a restrictive CSP", async () => {

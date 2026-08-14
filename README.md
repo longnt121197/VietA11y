@@ -80,6 +80,21 @@ loopback interface. They do not scan public websites.
 VietA11y is an open-source community project. Contributions, bug reports,
 accessibility knowledge, documentation improvements, and ideas are welcome.
 
+### Add Vietnamese guidance for an axe rule
+
+1. Confirm the exact rule ID and purpose in the installed `axe-core` version.
+2. Add one typed entry to
+   `packages/scanner/src/knowledge/rules.vi.ts`. Keep the Vietnamese guidance
+   concise, practical, and original; include an example only when it clarifies
+   the remediation.
+3. Add or update a knowledge/normalization test. Unsupported rules must keep
+   returning `UNAVAILABLE` without guessed remediation.
+4. Run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build`.
+
+The record key and its `ruleId` must match. All required Vietnamese fields must
+be non-empty. Adding curated guidance never changes which axe rules are run or
+which findings appear in a report.
+
 ## License
 
 MIT

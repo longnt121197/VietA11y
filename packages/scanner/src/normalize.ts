@@ -8,6 +8,7 @@ import type {
   SelectorTarget,
   WcagReference,
 } from "./model.js";
+import { getVietnameseGuidance } from "./knowledge/index.js";
 
 const knownImpacts = new Set<NormalizedImpact>([
   "minor",
@@ -93,6 +94,7 @@ function normalizeViolation(input: unknown): AccessibilityViolation | undefined 
     nodes: Array.isArray(violation.nodes)
       ? violation.nodes.map(normalizeNode)
       : [],
+    guidance: getVietnameseGuidance(ruleId),
   };
 
   assignOptionalString(normalized, "description", violation.description);

@@ -18,6 +18,23 @@ export interface AffectedNode {
   failureSummary?: string;
 }
 
+export interface CuratedVietnameseGuidance {
+  status: "CURATED";
+  title: string;
+  explanation: string;
+  whyItMatters: string;
+  remediation: string;
+  example?: string;
+}
+
+export interface UnavailableVietnameseGuidance {
+  status: "UNAVAILABLE";
+}
+
+export type VietnameseGuidance =
+  | CuratedVietnameseGuidance
+  | UnavailableVietnameseGuidance;
+
 export interface AccessibilityViolation {
   ruleId: string;
   impact: NormalizedImpact;
@@ -26,6 +43,7 @@ export interface AccessibilityViolation {
   helpUrl?: string;
   wcagReferences: WcagReference[];
   nodes: AffectedNode[];
+  guidance: VietnameseGuidance;
 }
 
 export interface ImpactDistribution {

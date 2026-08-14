@@ -75,6 +75,17 @@ test("normalizes one violation with one affected node", () => {
             failureSummary: "Fix the missing alt attribute.",
           },
         ],
+        guidance: {
+          status: "CURATED",
+          title: "Hình ảnh thiếu văn bản thay thế",
+          explanation:
+            "Phần tử <img> chưa có nội dung thay thế để truyền đạt mục đích hoặc thông tin của hình ảnh.",
+          whyItMatters:
+            "Screen reader cần văn bản thay thế để người không nhìn thấy hình vẫn hiểu được nội dung. Văn bản này cũng hữu ích khi hình ảnh không tải được.",
+          remediation:
+            'Viết thuộc tính alt ngắn gọn theo mục đích của hình trong ngữ cảnh. Nếu hình chỉ để trang trí, dùng alt rỗng (alt="") để công nghệ hỗ trợ có thể bỏ qua. Không dùng alt rỗng cho hình có thông tin hoặc chức năng.',
+          example: '<img src="search.svg" alt="Tìm kiếm">',
+        },
       },
     ],
     warnings: [],
@@ -206,6 +217,7 @@ test("handles reasonably missing optional fields and malformed entries", () => {
       impact: "unknown",
       wcagReferences: [],
       nodes: [{ target: [] }, { target: [] }],
+      guidance: { status: "UNAVAILABLE" },
     },
   ]);
   assert.deepEqual(report.warnings, ["Ignored 2 malformed violation entries."]);
