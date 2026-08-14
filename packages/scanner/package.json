@@ -11,11 +11,18 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "browser:install": "playwright install chromium",
     "build": "tsc -p tsconfig.json",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "npm run build && node --test test/normalize.test.mjs"
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "axe-core": "^4.13.0",
+    "playwright": "^1.62.1"
   }
 }

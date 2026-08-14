@@ -10,6 +10,7 @@ import {
 const metadata = {
   submittedUrl: "https://example.test/start",
   finalUrl: "https://example.test/final",
+  documentTitle: "Example document",
   scannedAt: "2026-08-14T10:00:00.000Z",
   durationMs: 125,
 };

@@ -11,8 +11,9 @@ certification.
 
 ## Project status
 
-VietA11y is currently under active development. Milestone 0 establishes the
-development foundation only; accessibility scanning is not implemented yet.
+VietA11y is currently under active development. The scanner package can run one
+framework-independent Playwright and axe-core scan, but it is not connected to
+the web application and is not ready for public arbitrary-URL hosting.
 
 ## Repository structure
 
@@ -32,6 +33,12 @@ Install workspace dependencies:
 npm install
 ```
 
+Install the Chromium binary used by scanner integration tests and local scans:
+
+```sh
+npm run browser:install --workspace @vieta11y/scanner
+```
+
 Start the web application in development mode:
 
 ```sh
@@ -49,9 +56,8 @@ npm test
 npm run build
 ```
 
-Milestone 0 intentionally contains no behavioral unit tests. The test command
-uses Node's built-in test runner so future deterministic scanner tests can be
-added without introducing a test framework prematurely.
+Scanner integration tests use deterministic HTTP fixtures served on the local
+loopback interface. They do not scan public websites.
 
 ## Goals
 

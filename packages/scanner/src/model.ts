@@ -45,6 +45,7 @@ export interface ScanSummary {
 export interface ScanMetadata {
   submittedUrl: string;
   finalUrl: string;
+  documentTitle: string;
   scannedAt: string;
   durationMs: number;
 }
