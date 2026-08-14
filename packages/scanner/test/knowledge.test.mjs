@@ -81,6 +81,7 @@ test("normalization preserves supported and unsupported findings", () => {
     help: "Authoritative axe help remains available",
     helpUrl: "https://example.test/axe-reference",
     wcagReferences: [],
+    totalNodeCount: 1,
     nodes: [{ target: ["main"] }],
     guidance: { status: "UNAVAILABLE" },
   });

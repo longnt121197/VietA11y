@@ -1,5 +1,9 @@
 import { ScannerError, scanPage } from "@vieta11y/scanner";
 import type { ScanReport, ScannerErrorCode } from "@vieta11y/scanner";
+import {
+  scanTrustedLocalFixture,
+  trustedLocalFixtureMarker,
+} from "@vieta11y/scanner/internal-test-support";
 
 export interface ScanSuccessBody {
   report: ScanReport;
@@ -16,7 +20,7 @@ export interface ScanErrorBody {
 
 export type ScanApiResult =
   | { status: 200; body: ScanSuccessBody }
-  | { status: 400 | 500 | 502 | 504; body: ScanErrorBody };
+  | { status: 400 | 500 | 502 | 503 | 504; body: ScanErrorBody };
 
 type ScanFunction = (url: string) => Promise<ScanReport>;
 
@@ -32,7 +36,7 @@ const invalidRequestResult: ScanApiResult = {
 
 export async function createScanApiResult(
   input: unknown,
-  scan: ScanFunction = scanPage,
+  scan: ScanFunction = scanForRequest,
 ): Promise<ScanApiResult> {
   const url = readUrl(input);
 
@@ -84,7 +88,19 @@ function mapScanError(error: unknown): ScanApiResult {
       return safeError(
         400,
         error.code,
-        "URL phải là địa chỉ HTTP hoặc HTTPS tuyệt đối và hợp lệ.",
+        "URL phải là địa chỉ HTTP hoặc HTTPS tuyệt đối, hợp lệ và không chứa thông tin đăng nhập.",
+      );
+    case "BLOCKED_TARGET":
+      return safeError(
+        400,
+        error.code,
+        "Không thể quét đích này theo chính sách an toàn mạng của VietA11y.",
+      );
+    case "DNS_RESOLUTION_FAILED":
+      return safeError(
+        502,
+        error.code,
+        "Không thể phân giải tên máy chủ của trang cần quét.",
       );
     case "NAVIGATION_TIMEOUT":
       return safeError(
@@ -104,6 +120,18 @@ function mapScanError(error: unknown): ScanApiResult {
         error.code,
         "Không thể phân tích trạng thái trang đã tải.",
       );
+    case "SCAN_TIMEOUT":
+      return safeError(
+        504,
+        error.code,
+        "Lần quét vượt quá thời gian tối đa. Vui lòng thử lại.",
+      );
+    case "CAPACITY_EXCEEDED":
+      return safeError(
+        503,
+        error.code,
+        "Máy chủ đang xử lý số lần quét tối đa. Vui lòng thử lại sau.",
+      );
     case "SCAN_FAILED":
       return safeError(
         500,
@@ -114,7 +142,7 @@ function mapScanError(error: unknown): ScanApiResult {
 }
 
 function safeError(
-  status: 400 | 500 | 502 | 504,
+  status: 400 | 500 | 502 | 503 | 504,
   code: ScanApiErrorCode,
   message: string,
 ): ScanApiResult {
@@ -122,4 +150,15 @@ function safeError(
     status,
     body: { error: { code, message } },
   };
+}
+
+function scanForRequest(url: string): Promise<ScanReport> {
+  const trustedOrigin = process.env.VIETA11Y_INTERNAL_TEST_FIXTURE_ORIGIN;
+  const marker = process.env.VIETA11Y_INTERNAL_TEST_FIXTURE_MARKER;
+
+  if (trustedOrigin !== undefined && marker === trustedLocalFixtureMarker) {
+    return scanTrustedLocalFixture(url, trustedOrigin, marker);
+  }
+
+  return scanPage(url);
 }

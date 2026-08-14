@@ -42,6 +42,7 @@ export interface AccessibilityViolation {
   help?: string;
   helpUrl?: string;
   wcagReferences: WcagReference[];
+  totalNodeCount: number;
   nodes: AffectedNode[];
   guidance: VietnameseGuidance;
 }

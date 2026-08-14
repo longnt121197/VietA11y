@@ -334,7 +334,7 @@ function ViolationCard({
         ) : null}
 
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Metadata label="Số phần tử bị ảnh hưởng" value={String(violation.nodes.length)} />
+          <Metadata label="Số phần tử bị ảnh hưởng" value={String(violation.totalNodeCount)} />
           <div>
             <dt className="text-sm font-semibold text-slate-600">Tham chiếu WCAG</dt>
             <dd className="mt-1 text-slate-950">
@@ -373,6 +373,12 @@ function ViolationCard({
           Phần tử bị ảnh hưởng
           <span className="sr-only"> cho quy tắc {violation.ruleId}</span>
         </h5>
+        {violation.nodes.length < violation.totalNodeCount ? (
+          <p className="mt-3 text-sm text-slate-700">
+            Hiển thị {violation.nodes.length} trong tổng số {violation.totalNodeCount} phần tử
+            để giữ báo cáo ở kích thước an toàn.
+          </p>
+        ) : null}
         {violation.nodes.length === 0 ? (
           <p className="mt-3 text-slate-700">Không có chi tiết phần tử.</p>
         ) : (
@@ -478,6 +484,10 @@ function validateUrlInput(input: string): string | undefined {
       parsed.hostname.length === 0
     ) {
       return "URL phải bắt đầu bằng http:// hoặc https:// và có tên máy chủ.";
+    }
+
+    if (parsed.username.length > 0 || parsed.password.length > 0) {
+      return "URL không được chứa tên người dùng hoặc mật khẩu.";
     }
   } catch {
     return "Hãy nhập một URL đầy đủ và hợp lệ, ví dụ https://example.com.";

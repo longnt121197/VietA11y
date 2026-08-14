@@ -1,4 +1,5 @@
 import http from "node:http";
+import { Buffer } from "node:buffer";
 import { URL } from "node:url";
 
 const pages = {
@@ -51,8 +52,32 @@ const pages = {
 
 export async function startFixtureServer() {
   const sockets = new Set();
+  const requestCounts = new Map();
   const server = http.createServer((request, response) => {
     const requestUrl = new URL(request.url ?? "/", "http://fixture.test");
+    requestCounts.set(
+      requestUrl.pathname,
+      (requestCounts.get(requestUrl.pathname) ?? 0) + 1,
+    );
+
+    if (requestUrl.pathname === "/redirect-to") {
+      response.writeHead(302, { location: requestUrl.searchParams.get("url") ?? "/" });
+      response.end();
+      return;
+    }
+
+    if (requestUrl.pathname === "/subresource") {
+      const source = escapeHtmlAttribute(requestUrl.searchParams.get("url") ?? "");
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      response.end(`<!doctype html><html lang="en"><head><title>Subresource fixture</title></head><body><main><h1>Subresource</h1><img alt="probe" src="${source}"></main></body></html>`);
+      return;
+    }
+
+    if (requestUrl.pathname === "/probe.png") {
+      response.writeHead(200, { "content-type": "image/gif" });
+      response.end(Buffer.from("R0lGODlhAQABAAAAACw=", "base64"));
+      return;
+    }
 
     if (requestUrl.pathname === "/redirect") {
       response.writeHead(302, { location: "/missing-alt" });
@@ -110,6 +135,12 @@ export async function startFixtureServer() {
     url(pathname) {
       return `http://127.0.0.1:${address.port}${pathname}`;
     },
+    get origin() {
+      return `http://127.0.0.1:${address.port}`;
+    },
+    requestCount(pathname) {
+      return requestCounts.get(pathname) ?? 0;
+    },
     async close() {
       for (const socket of sockets) {
         socket.destroy();
@@ -120,4 +151,12 @@ export async function startFixtureServer() {
       });
     },
   };
+}
+
+function escapeHtmlAttribute(input) {
+  return input
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }

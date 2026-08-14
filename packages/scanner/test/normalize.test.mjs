@@ -68,6 +68,7 @@ test("normalizes one violation with one affected node", () => {
         wcagReferences: [
           { standard: "WCAG", successCriterion: "1.1.1" },
         ],
+        totalNodeCount: 1,
         nodes: [
           {
             target: ["img.hero"],
@@ -216,6 +217,7 @@ test("handles reasonably missing optional fields and malformed entries", () => {
       ruleId: "partial-rule",
       impact: "unknown",
       wcagReferences: [],
+      totalNodeCount: 2,
       nodes: [{ target: [] }, { target: [] }],
       guidance: { status: "UNAVAILABLE" },
     },
@@ -293,4 +295,37 @@ test("returns an empty report when violations are absent", () => {
     },
   });
   assert.deepEqual(report.violations, []);
+});
+
+test("bounds retained node details and strings while preserving true totals", () => {
+  const oversizedText = "x".repeat(3_000);
+  const nodes = Array.from({ length: 125 }, (_, index) => ({
+    target: [`#node-${index}-${oversizedText}`],
+    html: oversizedText,
+    failureSummary: oversizedText,
+  }));
+  const report = normalizeAxeResults(
+    {
+      violations: [{
+        id: "oversized",
+        description: oversizedText,
+        helpUrl: `https://example.test/${oversizedText}`,
+        nodes,
+      }],
+    },
+    { ...metadata, documentTitle: oversizedText },
+  );
+  const violation = report.violations[0];
+
+  assert.equal(violation.totalNodeCount, 125);
+  assert.equal(violation.nodes.length, 100);
+  assert.equal(report.summary.affectedElementCount, 125);
+  assert.equal(report.metadata.documentTitle.length, 300);
+  assert.equal(violation.description.length, 1_000);
+  assert.equal(violation.helpUrl, undefined);
+  assert.equal(violation.nodes[0].target[0].length, 500);
+  assert.equal(violation.nodes[0].html.length, 2_000);
+  assert.equal(violation.nodes[0].failureSummary.length, 2_000);
+  assert.ok(report.warnings.some((warning) => /total affected-element counts remain unchanged/.test(warning)));
+  assert.ok(report.warnings.some((warning) => /Truncated oversized/.test(warning)));
 });

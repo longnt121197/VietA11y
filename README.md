@@ -18,10 +18,11 @@ impact counts. Findings retain their authoritative axe reference and show
 curated Vietnamese guidance when it exists or an explicit unavailable state
 when it does not.
 
-The Web MVP is intended for local development or controlled self-hosting. It is
-**not ready for public arbitrary-URL hosting**. Exposing URL scanning to
-untrusted users requires the later public-hosting security gate, including the
-network and resource controls that are outside this milestone.
+The v0.1 application is intended for local development or controlled
+self-hosting. It includes application-level destination and resource guards,
+but it is **not approved for public arbitrary-URL hosting**. Exposing scanning
+to untrusted users requires a separate public-hosting security gate and
+deployment-level network controls.
 
 ## Repository structure
 
@@ -55,9 +56,39 @@ npm run dev
 ```
 
 Open the local URL printed by Next.js, enter an absolute HTTP or HTTPS URL, and
-submit the form. The scan runs in the server-side Node.js process and returns
-the existing `ScanReport` to the browser. Keep this development server in a
-trusted environment; basic URL input validation is not an SSRF defense.
+submit the form. The scan runs in the server-side Node.js process and returns a
+bounded, serializable `ScanReport` to the browser.
+
+Each scan launches headless Chromium with a fresh, non-persistent browser
+context. The installed Playwright Chromium build is required; VietA11y does not
+use or inherit a maintainer's normal browser profile.
+
+## Self-hosted v0.1 safeguards
+
+- The platform URL parser canonicalizes input. Only HTTP and HTTPS are accepted;
+  embedded credentials are rejected and fragments are discarded. Default ports
+  are normalized; other syntactically valid ports are preserved and checked
+  under the same destination policy.
+- Literal and DNS-resolved loopback, private, link-local, multicast, and
+  selected reserved IPv4/IPv6 destinations are rejected. Every returned DNS
+  address must pass the policy.
+- Chromium request-stage interception applies the same policy before HTTP(S)
+  redirects, frames, and subresources are dispatched.
+- Navigation is limited to 30 seconds and the overall scan to 60 seconds.
+  Pages, contexts, and browsers are closed on success, error, and timeout.
+- One process accepts at most two active scans. Excess work fails immediately;
+  there is no in-memory queue that can grow without bound.
+- Reports retain at most 100 node details per violated rule. The true affected
+  element total remains in `totalNodeCount` and in the report summary. Titles,
+  selectors, excerpts, failure summaries, and rule text also have deterministic
+  length limits.
+- The API uses stable Vietnamese error messages and does not return exception
+  messages, causes, or stacks. Application code does not log submitted URLs or
+  scan-derived page content.
+
+These are defense-in-depth controls, not a complete SSRF boundary. See
+[SECURITY.md](SECURITY.md) before exposing a self-hosted instance beyond a
+controlled environment.
 
 ## Verification
 
@@ -71,10 +102,12 @@ npm run build
 ```
 
 Scanner integration and Web MVP browser tests use deterministic HTTP fixtures
-served on the local loopback interface. The browser smoke test starts a local
-Next.js server and exercises the real API/scanner/axe/report path. Other Web API
-tests inject deterministic reports and scanner errors. The test suite does not
-scan public websites.
+served on the local loopback interface. Production policy still blocks
+loopback. Tests use a separate internal helper that requires an explicit marker
+and trusts one exact loopback origin; no bypass or allowlist is accepted in the
+`POST /api/scans` body. The browser smoke test starts a local Next.js server and
+exercises the real API/scanner/axe/report path. The test suite does not scan
+public websites.
 
 ## Current limitations
 
@@ -83,8 +116,15 @@ scan public websites.
 - Only selected axe rules have curated Vietnamese guidance; all other findings
   remain visible with an honest unavailable state.
 - Scans are synchronous and have no history, accounts, queue, export, numeric
-  score, crawling, authenticated flow, or cancellation.
-- Public-hosting hardening for untrusted arbitrary URLs is not implemented.
+  score, crawling, authenticated flow, or user cancellation.
+- DNS validation and browser dispatch are separate operations. DNS rebinding,
+  time-of-check/time-of-use changes, browser/network-stack behavior, and a
+  compromised host cannot be fully controlled in application code.
+- The two-scan capacity limit is per Node.js process. Multiple instances need
+  deployment-level admission and resource controls.
+- Chromium is resource-intensive. Operators should set process/container limits
+  and restrict outbound network access. Public arbitrary-URL scanning remains
+  outside the v0.1 approval boundary.
 
 ## Goals
 

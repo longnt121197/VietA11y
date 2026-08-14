@@ -34,6 +34,7 @@ const report = {
       help: "The html element must have a lang attribute",
       helpUrl: "https://dequeuniversity.com/rules/axe/html-has-lang",
       wcagReferences: [{ standard: "WCAG", successCriterion: "3.1.1" }],
+      totalNodeCount: 1,
       nodes: [{ target: ["html"], html: "<html>" }],
       guidance: {
         status: "CURATED",
@@ -48,6 +49,7 @@ const report = {
       impact: "moderate",
       helpUrl: "https://example.test/axe-reference",
       wcagReferences: [],
+      totalNodeCount: 1,
       nodes: [{ target: ["#fixture"] }],
       guidance: { status: "UNAVAILABLE" },
     },
@@ -65,6 +67,7 @@ test("rejects malformed request bodies without starting a scan", async () => {
     { url: "   " },
     { url: 42 },
     { url: "https://example.test", extra: true },
+    { url: "https://example.test", trustedOrigin: "http://127.0.0.1" },
   ];
   let callCount = 0;
 
@@ -105,9 +108,13 @@ test("serializes the existing ScanReport without dropping unsupported guidance",
 test("maps ScannerError codes to stable, user-safe HTTP results", async () => {
   const cases = [
     ["INVALID_INPUT", 400],
+    ["BLOCKED_TARGET", 400],
+    ["DNS_RESOLUTION_FAILED", 502],
     ["NAVIGATION_TIMEOUT", 504],
     ["NAVIGATION_FAILED", 502],
     ["AXE_EXECUTION_FAILED", 500],
+    ["SCAN_TIMEOUT", 504],
+    ["CAPACITY_EXCEEDED", 503],
     ["SCAN_FAILED", 500],
   ];
 
@@ -140,4 +147,22 @@ test("redacts details from unexpected internal errors", async () => {
   assert.equal(result.status, 500);
   assert.equal(result.body.error.code, "SCAN_FAILED");
   assert.doesNotMatch(serialized, /SECRET_TOKEN|sensitive|server\.ts/i);
+});
+
+test("does not echo sensitive submitted URL components in errors", async () => {
+  const sensitiveUrl = "https://example.test/path?token=TOP_SECRET#private-fragment";
+  const result = await createScanApiResult(
+    { url: sensitiveUrl },
+    async () => {
+      throw new ScannerError(
+        "BLOCKED_TARGET",
+        `Blocked ${sensitiveUrl}`,
+        new Error("credential-like internal detail"),
+      );
+    },
+  );
+  const serialized = JSON.stringify(result.body);
+
+  assert.equal(result.status, 400);
+  assert.doesNotMatch(serialized, /TOP_SECRET|private-fragment|credential-like|example\.test/);
 });

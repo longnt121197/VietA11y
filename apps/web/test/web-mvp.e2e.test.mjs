@@ -27,7 +27,7 @@ test(
 
     try {
       fixtureServer = await startFixtureServer();
-      appServer = await startNextServer();
+      appServer = await startNextServer(fixtureServer.origin);
       browser = await chromium.launch({ headless: true });
 
       const page = await browser.newPage({
@@ -209,7 +209,7 @@ async function readDefinitionValue(page, label) {
   return term.evaluate((element) => element.nextElementSibling?.textContent?.trim());
 }
 
-async function startNextServer() {
+async function startNextServer(trustedFixtureOrigin) {
   const port = await allocatePort();
   const nextBin = requireFromWeb.resolve("next/dist/bin/next");
   const logs = [];
@@ -218,7 +218,12 @@ async function startNextServer() {
     [nextBin, "start", "--hostname", "127.0.0.1", "--port", String(port)],
     {
       cwd: path.resolve(webRoot),
-      env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1" },
+      env: {
+        ...process.env,
+        NEXT_TELEMETRY_DISABLED: "1",
+        VIETA11Y_INTERNAL_TEST_FIXTURE_ORIGIN: trustedFixtureOrigin,
+        VIETA11Y_INTERNAL_TEST_FIXTURE_MARKER: "vieta11y-explicit-local-fixture",
+      },
       stdio: ["ignore", "pipe", "pipe"],
     },
   );
