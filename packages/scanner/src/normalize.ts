@@ -123,7 +123,8 @@ function normalizeViolation(
   }
 
   const rawNodes = violation.nodes;
-  const retainedNodes = rawNodes.slice(0, reportLimits.nodesPerViolation);
+  const validatedNodes = validateRawNodes(rawNodes, ruleId);
+  const retainedNodes = validatedNodes.slice(0, reportLimits.nodesPerViolation);
 
   if (retainedNodes.length < rawNodes.length) {
     truncation.nodes = true;
@@ -134,9 +135,7 @@ function normalizeViolation(
     impact: normalizeImpact(violation.impact),
     wcagReferences: deriveWcagReferences(violation.tags),
     totalNodeCount: rawNodes.length,
-    nodes: retainedNodes.map((node, nodeIndex) =>
-      normalizeNode(node, ruleId, nodeIndex, truncation),
-    ),
+    nodes: retainedNodes.map((node) => normalizeNode(node, truncation)),
     guidance: getVietnameseGuidance(ruleId),
   };
 
@@ -160,19 +159,9 @@ function normalizeViolation(
 }
 
 function normalizeNode(
-  input: unknown,
-  ruleId: string,
-  nodeIndex: number,
+  node: UnknownRecord,
   truncation: TruncationState,
 ): AffectedNode {
-  const node = asRecord(input);
-
-  if (node === undefined || !isValidSelectorTarget(node.target)) {
-    throw new Error(
-      `axe-core node ${nodeIndex} for violation "${ruleId}" has an invalid target.`,
-    );
-  }
-
   const normalized: AffectedNode = {
     target: normalizeTarget(node.target, truncation),
   };
@@ -193,6 +182,33 @@ function normalizeNode(
   );
 
   return normalized;
+}
+
+function validateRawNodes(
+  rawNodes: unknown[],
+  ruleId: string,
+): UnknownRecord[] {
+  const validatedNodes: UnknownRecord[] = [];
+
+  for (let nodeIndex = 0; nodeIndex < rawNodes.length; nodeIndex += 1) {
+    if (!Object.hasOwn(rawNodes, nodeIndex)) {
+      throw new Error(
+        `axe-core node ${nodeIndex} for violation "${ruleId}" is missing.`,
+      );
+    }
+
+    const node = asRecord(rawNodes[nodeIndex]);
+
+    if (node === undefined || !isValidSelectorTarget(node.target)) {
+      throw new Error(
+        `axe-core node ${nodeIndex} for violation "${ruleId}" has an invalid target.`,
+      );
+    }
+
+    validatedNodes.push(node);
+  }
+
+  return validatedNodes;
 }
 
 function isValidSelectorTarget(input: unknown): boolean {

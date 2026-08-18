@@ -168,7 +168,7 @@ test("redacts details from unexpected internal errors", async () => {
   assert.doesNotMatch(serialized, /SECRET_TOKEN|sensitive|server\.ts/i);
 });
 
-test("redacts malformed axe integrity details from the API response", async () => {
+test("malformed axe output never becomes a normal zero-violation response", async () => {
   const result = await createScanApiResult(
     { url: "https://example.test" },
     async () => {
@@ -182,6 +182,7 @@ test("redacts malformed axe integrity details from the API response", async () =
 
   assert.equal(result.status, 500);
   assert.equal(result.body.error.code, "SCAN_FAILED");
+  assert.equal("report" in result.body, false);
   assert.doesNotMatch(serialized, /axe-core|private selector/i);
 });
 

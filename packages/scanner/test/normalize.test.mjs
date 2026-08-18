@@ -15,6 +15,12 @@ const metadata = {
   durationMs: 125,
 };
 
+function createValidNodes(count) {
+  return Array.from({ length: count }, (_, index) => ({
+    target: [`#node-${index}`],
+  }));
+}
+
 test("normalizes one violation with one affected node", () => {
   const report = normalizeAxeResults(
     {
@@ -320,6 +326,82 @@ test("rejects malformed violation and affected-node structure", () => {
       normalizeAxeResults({ violations: [violation] }, metadata),
     );
   }
+});
+
+test("accepts and retains exactly 100 valid affected nodes", () => {
+  const report = normalizeAxeResults(
+    {
+      violations: [{ id: "exact-limit", nodes: createValidNodes(100) }],
+    },
+    metadata,
+  );
+  const violation = report.violations[0];
+
+  assert.equal(violation.totalNodeCount, 100);
+  assert.equal(violation.nodes.length, 100);
+});
+
+test("validates 101 nodes before honestly retaining only 100 details", () => {
+  const report = normalizeAxeResults(
+    {
+      violations: [{ id: "over-limit", nodes: createValidNodes(101) }],
+    },
+    metadata,
+  );
+  const violation = report.violations[0];
+
+  assert.equal(violation.totalNodeCount, 101);
+  assert.equal(violation.nodes.length, 100);
+  assert.equal(report.summary.affectedElementCount, 101);
+});
+
+test("rejects a null affected node after the 100-node retention limit", () => {
+  const nodes = [...createValidNodes(100), null];
+
+  assert.throws(
+    () => normalizeAxeResults(
+      { violations: [{ id: "null-after-limit", nodes }] },
+      metadata,
+    ),
+    /node 100.*invalid target/,
+  );
+});
+
+test("rejects a malformed affected node after the 100-node retention limit", () => {
+  const nodes = [...createValidNodes(100), {}];
+
+  assert.throws(
+    () => normalizeAxeResults(
+      { violations: [{ id: "malformed-after-limit", nodes }] },
+      metadata,
+    ),
+    /node 100.*invalid target/,
+  );
+});
+
+test("rejects an invalid affected node before the retention limit", () => {
+  const nodes = createValidNodes(101);
+  nodes[42] = null;
+
+  assert.throws(
+    () => normalizeAxeResults(
+      { violations: [{ id: "invalid-before-limit", nodes }] },
+      metadata,
+    ),
+    /node 42.*invalid target/,
+  );
+});
+
+test("rejects sparse affected-node arrays", () => {
+  const nodes = new Array(1);
+
+  assert.throws(
+    () => normalizeAxeResults(
+      { violations: [{ id: "sparse-nodes", nodes }] },
+      metadata,
+    ),
+    /node 0.*missing/,
+  );
 });
 
 test("bounds retained node details and strings while preserving true totals", () => {

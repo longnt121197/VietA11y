@@ -31,6 +31,12 @@ function scanFixture(pathname, options) {
   );
 }
 
+function createValidNodes(count) {
+  return Array.from({ length: count }, (_, index) => ({
+    target: [`#node-${index}`],
+  }));
+}
+
 test("production defaults reject loopback before launching Chromium", async () => {
   await assert.rejects(
     scanPage(fixtureServer.url("/baseline")),
@@ -356,7 +362,12 @@ function createFakeBrowser(events, failure, navigationGate) {
         return new Promise(() => {});
       }
       if (failure === "malformed-axe" && evaluationCount >= 3) {
-        return {};
+        return {
+          violations: [{
+            id: "malformed-after-limit",
+            nodes: [...createValidNodes(100), null],
+          }],
+        };
       }
       return evaluationCount === 1 ? undefined : { violations: [] };
     },
