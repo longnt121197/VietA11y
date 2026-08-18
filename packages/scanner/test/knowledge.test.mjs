@@ -17,7 +17,7 @@ test("curated records have unique matching IDs and non-empty Vietnamese fields",
   const entries = Object.entries(curatedVietnameseRules);
   const ruleIds = entries.map(([, entry]) => entry.ruleId);
 
-  assert.equal(entries.length, 10);
+  assert.equal(entries.length, 11);
   assert.equal(new Set(ruleIds).size, entries.length);
 
   for (const [key, entry] of entries) {
@@ -39,6 +39,14 @@ test("known rule returns curated Vietnamese guidance", () => {
   assert.equal(guidance.status, "CURATED");
   assert.match(guidance.title, /Nút/);
   assert.ok(guidance.remediation.length > 0);
+});
+
+test("html-lang-valid returns curated Vietnamese guidance", () => {
+  const guidance = getVietnameseGuidance("html-lang-valid");
+
+  assert.equal(guidance.status, "CURATED");
+  assert.match(guidance.title, /ngôn ngữ/);
+  assert.ok(guidance.remediation.includes("BCP 47"));
 });
 
 test("unknown rule returns only the explicit unavailable state", () => {

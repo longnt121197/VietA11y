@@ -78,6 +78,17 @@ export const curatedVietnameseRules: Record<
       "Đặt mã ngôn ngữ hợp lệ trên <html>, chẳng hạn lang=\"vi\" cho trang chủ yếu bằng tiếng Việt. Đánh dấu riêng những đoạn đổi sang ngôn ngữ khác khi cần.",
     example: '<html lang="vi">',
   },
+  "html-lang-valid": {
+    ruleId: "html-lang-valid",
+    title: "Giá trị ngôn ngữ của trang không hợp lệ",
+    explanation:
+      "Thuộc tính lang trên phần tử <html> có giá trị không được nhận diện là mã ngôn ngữ hợp lệ.",
+    whyItMatters:
+      "Công nghệ hỗ trợ dùng ngôn ngữ của trang để chọn quy tắc phát âm và cách trình bày phù hợp. Giá trị không hợp lệ có thể khiến người dùng nghe nội dung với phát âm sai hoặc không nhất quán.",
+    remediation:
+      "Đặt lang trên <html> bằng mã ngôn ngữ hợp lệ theo BCP 47, chẳng hạn lang=\"vi\" cho trang chủ yếu bằng tiếng Việt hoặc lang=\"en\" cho trang chủ yếu bằng tiếng Anh. Nếu một phần nội dung chuyển ngôn ngữ, đánh dấu phần đó bằng lang riêng thay vì dùng giá trị không chuẩn.",
+    example: '<html lang="vi">',
+  },
   "color-contrast": {
     ruleId: "color-contrast",
     title: "Độ tương phản văn bản chưa đủ",
