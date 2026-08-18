@@ -1,0 +1,63 @@
+name: Vietnamese guidance proposal
+description: Propose a correction or improvement to curated Vietnamese accessibility guidance.
+title: "[Vietnamese guidance]: "
+labels:
+  - accessibility
+  - documentation
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Curated guidance must be original, technically accurate Vietnamese. Verify the rule against the axe-core version installed by this repository and cite authoritative references.
+
+        **Do not include vulnerability details, private URLs, or scanned page data.** Follow [SECURITY.md](https://github.com/longnt121197/vieta11y/blob/main/SECURITY.md) for private security reporting.
+
+  - type: input
+    id: rule-id
+    attributes:
+      label: axe-core rule ID
+      placeholder: image-alt
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-issue
+    attributes:
+      label: Issue with the current guidance
+      description: Identify what is missing, unclear, inaccurate, or difficult for Vietnamese readers.
+    validations:
+      required: true
+
+  - type: textarea
+    id: wording
+    attributes:
+      label: Proposed Vietnamese wording or improvement
+      description: Provide original wording or describe the exact change. Do not copy a source translation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: references
+    attributes:
+      label: Technical references
+      description: Link authoritative axe rule metadata, WCAG success criteria, WAI guidance, or specifications reviewed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Accessibility rationale
+      description: Explain who is affected and why the proposed guidance is technically appropriate.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I verified the exact axe-core rule ID used by VietA11y.
+          required: true
+        - label: The proposed wording is original and does not claim automated WCAG conformance.
+          required: true

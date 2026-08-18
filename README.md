@@ -1,173 +1,161 @@
 # VietA11y
 
-> Vietnamese Web Accessibility Scanner with WCAG Guidance
+**Vietnamese Web Accessibility Scanner**
 
-VietA11y is an open-source tool built for Vietnamese developers. It scans one
-captured state of one web page for automated accessibility issues and provides
-curated Vietnamese guidance for selected findings.
+VietA11y scans one captured state of one web page, reports automated
+accessibility findings, and adds practical Vietnamese guidance where the
+project has a curated entry.
 
-Automated scanning cannot prove full WCAG conformance or provide accessibility
-certification.
+> **Status:** v0.1.0 released on 2026-08-18 · open source under MIT · intended
+> for local development and controlled self-hosting
 
-## Project status
+At a glance:
 
-VietA11y is currently under active development. The local Web MVP accepts one
-HTTP or HTTPS URL, runs the framework-independent Playwright and axe-core
-scanner synchronously, and presents transparent rule, affected-element
-occurrence, and impact counts. The occurrence count sums axe nodes across
-violated rules; it is not a count of unique DOM elements. Findings retain their
-authoritative axe reference and show one of the 10 initial curated Vietnamese
-guidance entries when it exists or an explicit unavailable state when it does
-not.
+- single-page automated scanning with Playwright and axe-core;
+- Vietnamese guidance for 10 curated, high-value axe rules;
+- transparent violated-rule, affected-element occurrence, and impact counts;
+- every finding remains visible when curated guidance is unavailable; and
+- no numeric score or accessibility-certification claim.
 
-The v0.1.0 application is intended for local development or controlled
-self-hosting. It includes application-level destination and resource guards.
-**Unrestricted public arbitrary-URL hosting is not approved by v0.1.0.**
-Exposing scanning to untrusted users requires a separate public-hosting
-security gate and deployment-level network controls.
+Automated testing does **not** prove full WCAG conformance and does not replace
+manual testing with keyboards, screen readers, and other assistive technology.
 
-## Repository structure
+## Why VietA11y?
 
-- `apps/web`: Next.js user interface and synchronous `POST /api/scans` boundary.
-- `packages/scanner`: framework-independent Playwright/axe scanner, report
-  model, normalization, summaries, and Vietnamese guidance lookup.
+Automated tools can identify useful signals, but their rule descriptions are
+not always approachable for Vietnamese teams. VietA11y keeps axe-core findings
+and authoritative references intact, then supplements selected rules with
+original Vietnamese explanations, impact context, and remediation guidance.
 
-## Prerequisites
+The goal is an understandable starting point for accessibility work—not a
+compliance score, certification service, or substitute for human review.
 
-- Node.js 22 or newer
-- npm 10 or newer
+## What v0.1.0 can do
 
-## Development
+- Accept one absolute HTTP or HTTPS URL and scan one captured page state.
+- Run axe-core in a fresh, non-persistent Playwright Chromium context.
+- Present a serializable report instead of exposing raw axe structures.
+- Count violated rules separately from affected-element occurrences. An
+  element may be counted again when it violates more than one rule.
+- Summarize violated rules by critical, serious, moderate, minor, or unknown
+  impact.
+- Attach curated Vietnamese guidance to 10 rules and show an honest unavailable
+  state for every other rule.
+- Bound scan time, concurrent work, and retained report details for controlled
+  self-hosting.
 
-Install workspace dependencies:
+## Demo and screenshots
+
+Real project screenshots have not been added yet. The planned set is:
+
+- the scanner input page;
+- a completed accessibility report; and
+- one curated Vietnamese guidance example.
+
+See [`docs/images/`](docs/images/) for the screenshot requirements. No mock or
+invented screenshots are used.
+
+## Quick start
+
+Prerequisites: Node.js 22 or newer and npm 10 or newer.
 
 ```sh
-npm install
-```
-
-Install the Chromium binary used by scanner integration tests and local scans:
-
-```sh
+npm ci
 npm run browser:install --workspace @vieta11y/scanner
-```
-
-Start the web application in development mode:
-
-```sh
 npm run dev
 ```
 
-Open the local URL printed by Next.js, enter an absolute HTTP or HTTPS URL, and
-submit the form. The scan runs in the server-side Node.js process and returns a
-bounded, serializable `ScanReport` to the browser.
+Open the local URL printed by Next.js. Submit an absolute HTTP or HTTPS URL for
+a page you own or are authorized to test.
 
-Each scan launches headless Chromium with a fresh, non-persistent browser
-context. The installed Playwright Chromium build is required; VietA11y does not
-use or inherit a maintainer's normal browser profile.
+The application itself runs locally, but the production scanner deliberately
+rejects localhost, private, link-local, and other prohibited network targets.
+Use a publicly reachable test page whose destination passes the documented
+policy; do not weaken that policy to scan a local target.
 
-## Self-hosted v0.1 safeguards
+## Example workflow
 
-- The platform URL parser canonicalizes input. Only HTTP and HTTPS are accepted;
-  embedded credentials are rejected and fragments are discarded. Default ports
-  are normalized; other syntactically valid ports are preserved and checked
-  under the same destination policy.
-- Literal and DNS-resolved loopback, private, link-local, multicast, and
-  selected reserved IPv4/IPv6 destinations are rejected. Every returned DNS
-  address must pass the policy.
-- Browser-context routing applies the same policy before HTTP(S) navigation,
-  redirects, frames, subresources, and popup/new-page requests are dispatched.
-  WebSocket routing validates `ws://` and `wss://` destinations before a
-  handshake is allowed.
-- Navigation is limited to 30 seconds and the overall scan to 60 seconds.
-  Pages, contexts, and browsers are closed on success, error, and timeout.
-- One process accepts at most two active scans. Excess work fails immediately;
-  there is no in-memory queue that can grow without bound.
-- Reports retain at most 100 node details per violated rule. The true affected
-  element total remains in `totalNodeCount` and in the report summary. Titles,
-  selectors, excerpts, failure summaries, and rule text also have deterministic
-  length limits.
-- The API uses stable Vietnamese error messages and does not return exception
-  messages, causes, or stacks. Application code does not log submitted URLs or
-  scan-derived page content.
+1. Start VietA11y with `npm run dev`.
+2. Enter an authorized page URL and choose **Quét trang**.
+3. Review the violated-rule count and affected-element occurrence count.
+4. Open each finding to inspect its selector, safe HTML excerpt, axe reference,
+   and Vietnamese guidance when available.
+5. Apply a fix in the target project, test manually as appropriate, and scan the
+   relevant page state again.
 
-These are defense-in-depth controls, not a complete SSRF boundary. See
-[SECURITY.md](SECURITY.md) before exposing a self-hosted instance beyond a
-controlled environment.
+Each scan is synchronous and launches an isolated Chromium context. VietA11y
+does not use or inherit your normal browser profile.
 
-## Verification
+## Vietnamese guidance
 
-Run the same checks used by CI:
+The initial knowledge layer covers 10 curated axe rules. Entries live in
+[`packages/scanner/src/knowledge/rules.vi.ts`](packages/scanner/src/knowledge/rules.vi.ts)
+as a small typed record keyed by axe rule ID.
 
-```sh
-npm run lint
-npm run typecheck
-npm test
-npm run build
-```
+Unsupported rules are never hidden. Their automated findings and authoritative
+axe references remain visible with a clear notice that curated Vietnamese
+guidance is not yet available. VietA11y does not guess or generate remediation.
 
-Scanner integration and Web MVP browser tests use deterministic HTTP fixtures
-served on the local loopback interface. Production policy still blocks
-loopback. A helper that exists only under scanner test sources requires an
-explicit marker and trusts one exact loopback origin; it is not exported by the
-scanner package. The Web API has no environment or request-body switch that can
-activate this helper. The browser smoke test starts a production Next.js server
-and has the test runner fulfill its scan request with the test-only scanner
-helper; API mapping is covered separately by service tests. The test suite does
-not scan public websites.
+To improve an entry or propose a new one, follow the
+[Vietnamese guidance workflow](CONTRIBUTING.md#add-or-improve-vietnamese-guidance)
+or use the [Vietnamese guidance issue template](.github/ISSUE_TEMPLATE/vietnamese_guidance.yml).
 
 ## Current limitations
 
-- Automated results cover one captured state of one page and cannot prove full
-  WCAG conformance or replace manual testing.
-- Only selected axe rules have curated Vietnamese guidance; all other findings
-  remain visible with an honest unavailable state.
-- Scans are synchronous and have no history, accounts, queue, export, numeric
-  score, crawling, authenticated flow, or user cancellation.
-- DNS validation and browser dispatch are separate operations. DNS rebinding,
-  time-of-check/time-of-use changes, browser/network-stack behavior, and a
-  compromised host cannot be fully controlled in application code.
-- The two-scan capacity limit is per Node.js process. Multiple instances need
-  deployment-level admission and resource controls.
-- Chromium is resource-intensive. Operators should set process/container limits
-  and restrict outbound network access. Public arbitrary-URL scanning remains
-  outside the v0.1 approval boundary.
-
-## Goals
-
-- Scan websites for automated accessibility issues.
-- Explain selected findings in Vietnamese.
-- Provide practical remediation examples.
-- Build a Vietnamese accessibility knowledge base.
-- Keep findings and counts transparent without claiming certification.
-
-## Roadmap
-
-- [x] v0.1 — Web accessibility scanner
-- [ ] v0.2 — Vietnamese WCAG knowledge base
-- [ ] v0.3 — CLI
-- [ ] v0.4 — GitHub Action
-- [ ] v0.5 — Browser extension
+- A scan covers one captured state of one page; there is no crawling,
+  authenticated flow, or scripted multi-state testing.
+- Automated findings cannot establish WCAG conformance or replace manual
+  accessibility evaluation.
+- Only 10 axe rules have curated Vietnamese guidance in v0.1.0.
+- Scans are synchronous, with no accounts, history, queue, exports, numeric
+  score, or user cancellation.
+- Application-level URL and browser guards are defense in depth, not a complete
+  SSRF boundary. DNS rebinding and browser/network-stack behavior cannot be
+  fully controlled in application code.
+- The two-scan capacity limit is per Node.js process, and Chromium still needs
+  deployment-level resource and outbound-network controls.
+- **Unrestricted public arbitrary-URL hosting is not approved by v0.1.0.**
 
 ## Contributing
 
-VietA11y is an open-source community project. Contributions, bug reports,
-accessibility knowledge, documentation improvements, and ideas are welcome.
+Bug reports, focused improvements, deterministic tests, accessibility feedback,
+and carefully researched Vietnamese knowledge contributions are welcome.
 
-### Add Vietnamese guidance for an axe rule
+- Read [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup, checks, scope, and pull
+  request expectations.
+- Browse the reviewed candidates in
+  [`.github/GOOD_FIRST_ISSUES.md`](.github/GOOD_FIRST_ISSUES.md) when looking for
+  a beginner-friendly contribution.
+- Use the repository issue templates for bugs, feature ideas, and Vietnamese
+  guidance proposals.
+- Follow the [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) in all project spaces.
 
-1. Confirm the exact rule ID and purpose in the installed `axe-core` version.
-2. Add one typed entry to
-   `packages/scanner/src/knowledge/rules.vi.ts`. Keep the Vietnamese guidance
-   concise, practical, and original; include an example only when it clarifies
-   the remediation.
-3. Add or update a knowledge/normalization test. Unsupported rules must keep
-   returning `UNAVAILABLE` without guessed remediation.
-4. Run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build`.
+The repository contains two workspaces:
 
-The record key and its `ruleId` must match. All required Vietnamese fields must
-be non-empty. Adding curated guidance never changes which axe rules are run or
-which findings appear in a report.
+- `apps/web`: Next.js interface, API boundary, and accessible report UI.
+- `packages/scanner`: framework-independent Playwright/axe scanner, report
+  normalization, summaries, errors, and Vietnamese guidance lookup.
+
+## Roadmap
+
+Community Launch Phase 1 focuses on contributor onboarding, actionable feedback,
+documentation, tests, and the quality of the Vietnamese knowledge layer.
+Near-term development should remain small and evidence-driven.
+
+Potential later directions include a broader Vietnamese WCAG knowledge base and
+other developer workflows. A CLI, GitHub Action, browser extension, or public
+scanner would each require a separate scoped decision; they are not commitments
+of v0.1.0. Public arbitrary-URL hosting also requires a separate security gate.
+
+## Security
+
+Read [`SECURITY.md`](SECURITY.md) before self-hosting. It documents the current
+controls, remaining SSRF and resource-exhaustion limitations, deployment
+expectations, and private vulnerability-reporting process.
+
+Do not post vulnerabilities, secrets, private URLs, or scanned page data in a
+public issue. Use [GitHub private vulnerability reporting](https://github.com/longnt121197/vieta11y/security/advisories/new).
 
 ## License
 
-MIT
+[MIT](LICENSE)

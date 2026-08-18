@@ -1,0 +1,56 @@
+name: Feature request
+description: Suggest a focused improvement that addresses a clear problem.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem before the solution. VietA11y v0.1 intentionally covers one URL, one page, and one captured state.
+
+        **Do not report security vulnerabilities here.** Follow [SECURITY.md](https://github.com/longnt121197/vieta11y/blob/main/SECURITY.md) and use [GitHub private vulnerability reporting](https://github.com/longnt121197/vieta11y/security/advisories/new).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Who encounters this problem, and what makes it important?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest useful change and its expected behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What existing workflow or smaller solution have you considered?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Fit with current scope
+      description: Does this fit a single-page automated scan, accessible reporting, contributor experience, or curated Vietnamese guidance?
+      options:
+        - Yes
+        - Unsure
+        - No; this is a longer-term idea
+    validations:
+      required: true
+
+  - type: textarea
+    id: accessibility
+    attributes:
+      label: Accessibility and security considerations
+      description: Note effects on keyboard use, assistive technology, untrusted data, URL handling, or resource use. Write "None identified" if not applicable.
+    validations:
+      required: true

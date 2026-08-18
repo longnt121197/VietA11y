@@ -1,0 +1,84 @@
+name: Bug report
+description: Report a reproducible problem in VietA11y.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve VietA11y. Search existing issues first.
+
+        **Do not report security vulnerabilities here.** Follow [SECURITY.md](https://github.com/longnt121197/vieta11y/blob/main/SECURITY.md) and use [GitHub private vulnerability reporting](https://github.com/longnt121197/vieta11y/security/advisories/new).
+
+  - type: input
+    id: version
+    attributes:
+      label: VietA11y version
+      description: For example, v0.1.0 or a commit SHA.
+      placeholder: v0.1.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include operating system, browser if relevant, and how VietA11y is run or hosted.
+      placeholder: Windows 11; local development; Chromium...
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js and npm versions
+      description: Paste the output of `node --version` and `npm --version`.
+      placeholder: Node.js v22.x; npm 10.x
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect VietA11y to do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest deterministic reproduction you can. Use only targets you own or are authorized to test.
+      placeholder: |
+        1. Start VietA11y with...
+        2. Submit...
+        3. Observe...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs or additional context
+      description: Remove secrets, private URLs, query strings, page content, selectors, and other sensitive scan data.
+      render: shell
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety checks
+      options:
+        - label: I removed sensitive URLs, page data, credentials, and secrets from this report.
+          required: true
+        - label: This report does not describe a security vulnerability.
+          required: true
