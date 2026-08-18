@@ -5,7 +5,7 @@ import {
   normalizeAxeResults,
   normalizeImpact,
   summarizeViolations,
-} from "../dist/index.js";
+} from "../dist/normalize.js";
 
 const metadata = {
   submittedUrl: "https://example.test/start",
@@ -196,17 +196,15 @@ test("derives only conservative WCAG success-criterion references", () => {
   ]);
 });
 
-test("handles reasonably missing optional fields and malformed entries", () => {
+test("handles missing optional fields when required axe structure is valid", () => {
   const report = normalizeAxeResults(
     {
       violations: [
         {
           id: "partial-rule",
           tags: null,
-          nodes: [{ target: undefined }, null],
+          nodes: [{ target: [] }, { target: ["#fixture"] }],
         },
-        null,
-        { impact: "minor", nodes: [] },
       ],
     },
     metadata,
@@ -218,11 +216,11 @@ test("handles reasonably missing optional fields and malformed entries", () => {
       impact: "unknown",
       wcagReferences: [],
       totalNodeCount: 2,
-      nodes: [{ target: [] }, { target: [] }],
+      nodes: [{ target: [] }, { target: ["#fixture"] }],
       guidance: { status: "UNAVAILABLE" },
     },
   ]);
-  assert.deepEqual(report.warnings, ["Ignored 2 malformed violation entries."]);
+  assert.deepEqual(report.warnings, []);
 });
 
 test("summary calculation uses normalized violations only", () => {
@@ -280,8 +278,8 @@ test("normalization is deterministic, JSON serializable, and does not mutate inp
   ]);
 });
 
-test("returns an empty report when violations are absent", () => {
-  const report = normalizeAxeResults({}, metadata);
+test("returns a legitimate clean report for a valid empty violations array", () => {
+  const report = normalizeAxeResults({ violations: [] }, metadata);
 
   assert.deepEqual(report.summary, {
     violatedRuleCount: 0,
@@ -295,6 +293,33 @@ test("returns an empty report when violations are absent", () => {
     },
   });
   assert.deepEqual(report.violations, []);
+});
+
+test("rejects missing or invalid violations collections", () => {
+  for (const input of [{}, { violations: null }, { violations: {} }]) {
+    assert.throws(
+      () => normalizeAxeResults(input, metadata),
+      /violations array/,
+    );
+  }
+});
+
+test("rejects malformed violation and affected-node structure", () => {
+  const malformedViolations = [
+    null,
+    { id: "", nodes: [] },
+    { id: "missing-nodes" },
+    { id: "invalid-nodes", nodes: null },
+    { id: "invalid-node", nodes: [null] },
+    { id: "invalid-target", nodes: [{ target: null }] },
+    { id: "invalid-target-part", nodes: [{ target: [42] }] },
+  ];
+
+  for (const violation of malformedViolations) {
+    assert.throws(() =>
+      normalizeAxeResults({ violations: [violation] }, metadata),
+    );
+  }
 });
 
 test("bounds retained node details and strings while preserving true totals", () => {
@@ -326,6 +351,6 @@ test("bounds retained node details and strings while preserving true totals", ()
   assert.equal(violation.nodes[0].target[0].length, 500);
   assert.equal(violation.nodes[0].html.length, 2_000);
   assert.equal(violation.nodes[0].failureSummary.length, 2_000);
-  assert.ok(report.warnings.some((warning) => /total affected-element counts remain unchanged/.test(warning)));
+  assert.ok(report.warnings.some((warning) => /occurrence counts remain unchanged/.test(warning)));
   assert.ok(report.warnings.some((warning) => /Truncated oversized/.test(warning)));
 });

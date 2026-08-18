@@ -85,6 +85,25 @@ test("rejects malformed request bodies without starting a scan", async () => {
   assert.equal(createInvalidJsonResult().status, 400);
 });
 
+test("production API cannot enable loopback through fixture environment variables", async () => {
+  const originKey = "VIETA11Y_INTERNAL_TEST_FIXTURE_ORIGIN";
+  const markerKey = "VIETA11Y_INTERNAL_TEST_FIXTURE_MARKER";
+  const previousOrigin = process.env[originKey];
+  const previousMarker = process.env[markerKey];
+
+  process.env[originKey] = "http://127.0.0.1:4321";
+  process.env[markerKey] = "vieta11y-explicit-local-fixture";
+
+  try {
+    const result = await createScanApiResult({ url: "http://127.0.0.1:4321/" });
+    assert.equal(result.status, 400);
+    assert.equal(result.body.error.code, "BLOCKED_TARGET");
+  } finally {
+    restoreEnvironment(originKey, previousOrigin);
+    restoreEnvironment(markerKey, previousMarker);
+  }
+});
+
 test("serializes the existing ScanReport without dropping unsupported guidance", async () => {
   const result = await createScanApiResult(
     { url: "https://example.test" },
@@ -149,6 +168,23 @@ test("redacts details from unexpected internal errors", async () => {
   assert.doesNotMatch(serialized, /SECRET_TOKEN|sensitive|server\.ts/i);
 });
 
+test("redacts malformed axe integrity details from the API response", async () => {
+  const result = await createScanApiResult(
+    { url: "https://example.test" },
+    async () => {
+      throw new ScannerError(
+        "SCAN_FAILED",
+        "axe-core violation 0 has an invalid private selector",
+      );
+    },
+  );
+  const serialized = JSON.stringify(result.body);
+
+  assert.equal(result.status, 500);
+  assert.equal(result.body.error.code, "SCAN_FAILED");
+  assert.doesNotMatch(serialized, /axe-core|private selector/i);
+});
+
 test("does not echo sensitive submitted URL components in errors", async () => {
   const sensitiveUrl = "https://example.test/path?token=TOP_SECRET#private-fragment";
   const result = await createScanApiResult(
@@ -166,3 +202,11 @@ test("does not echo sensitive submitted URL components in errors", async () => {
   assert.equal(result.status, 400);
   assert.doesNotMatch(serialized, /TOP_SECRET|private-fragment|credential-like|example\.test/);
 });
+
+function restoreEnvironment(key, value) {
+  if (value === undefined) {
+    delete process.env[key];
+  } else {
+    process.env[key] = value;
+  }
+}

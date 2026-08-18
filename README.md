@@ -13,8 +13,10 @@ certification.
 
 VietA11y is currently under active development. The local Web MVP accepts one
 HTTP or HTTPS URL, runs the framework-independent Playwright and axe-core
-scanner synchronously, and presents transparent rule, affected-element, and
-impact counts. Findings retain their authoritative axe reference and show
+scanner synchronously, and presents transparent rule, affected-element
+occurrence, and impact counts. The occurrence count sums axe nodes across
+violated rules; it is not a count of unique DOM elements. Findings retain their
+authoritative axe reference and show
 curated Vietnamese guidance when it exists or an explicit unavailable state
 when it does not.
 
@@ -72,8 +74,10 @@ use or inherit a maintainer's normal browser profile.
 - Literal and DNS-resolved loopback, private, link-local, multicast, and
   selected reserved IPv4/IPv6 destinations are rejected. Every returned DNS
   address must pass the policy.
-- Chromium request-stage interception applies the same policy before HTTP(S)
-  redirects, frames, and subresources are dispatched.
+- Browser-context routing applies the same policy before HTTP(S) navigation,
+  redirects, frames, subresources, and popup/new-page requests are dispatched.
+  WebSocket routing validates `ws://` and `wss://` destinations before a
+  handshake is allowed.
 - Navigation is limited to 30 seconds and the overall scan to 60 seconds.
   Pages, contexts, and browsers are closed on success, error, and timeout.
 - One process accepts at most two active scans. Excess work fails immediately;
@@ -103,11 +107,13 @@ npm run build
 
 Scanner integration and Web MVP browser tests use deterministic HTTP fixtures
 served on the local loopback interface. Production policy still blocks
-loopback. Tests use a separate internal helper that requires an explicit marker
-and trusts one exact loopback origin; no bypass or allowlist is accepted in the
-`POST /api/scans` body. The browser smoke test starts a local Next.js server and
-exercises the real API/scanner/axe/report path. The test suite does not scan
-public websites.
+loopback. A helper that exists only under scanner test sources requires an
+explicit marker and trusts one exact loopback origin; it is not exported by the
+scanner package. The Web API has no environment or request-body switch that can
+activate this helper. The browser smoke test starts a production Next.js server
+and has the test runner fulfill its scan request with the test-only scanner
+helper; API mapping is covered separately by service tests. The test suite does
+not scan public websites.
 
 ## Current limitations
 

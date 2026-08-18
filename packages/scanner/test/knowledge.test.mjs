@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { getVietnameseGuidance } from "../dist/knowledge/index.js";
 import { curatedVietnameseRules } from "../dist/knowledge/rules.vi.js";
-import { normalizeAxeResults } from "../dist/index.js";
+import { normalizeAxeResults } from "../dist/normalize.js";
 
 const metadata = {
   submittedUrl: "https://example.test/page",

@@ -67,16 +67,16 @@ export function normalizeAxeResults(
   metadata: ScanMetadata,
 ): ScanReport {
   const result = asRecord(input);
-  const rawViolations = Array.isArray(result?.violations)
-    ? result.violations
-    : [];
+
+  if (result === undefined || !Array.isArray(result.violations)) {
+    throw new Error("axe-core results must contain a violations array.");
+  }
+
+  const rawViolations = result.violations;
   const truncation = { nodes: false, strings: false };
-  const violations = rawViolations
-    .map((violation) => normalizeViolation(violation, truncation))
-    .filter((violation): violation is AccessibilityViolation =>
-      violation !== undefined,
-    );
-  const ignoredViolationCount = rawViolations.length - violations.length;
+  const violations = rawViolations.map((violation, index) =>
+    normalizeViolation(violation, index, truncation),
+  );
 
   return {
     metadata: {
@@ -89,26 +89,40 @@ export function normalizeAxeResults(
     },
     summary: summarizeViolations(violations),
     violations,
-    warnings: buildWarnings(ignoredViolationCount, truncation),
+    warnings: buildWarnings(truncation),
   };
 }
 
 function normalizeViolation(
   input: unknown,
+  violationIndex: number,
   truncation: TruncationState,
-): AccessibilityViolation | undefined {
+): AccessibilityViolation {
   const violation = asRecord(input);
+
+  if (violation === undefined) {
+    throw new Error(`axe-core violation at index ${violationIndex} must be an object.`);
+  }
+
   const ruleId = readLimitedString(
-    violation?.id,
+    violation.id,
     reportLimits.ruleTextLength,
     truncation,
   );
 
-  if (violation === undefined || ruleId === undefined) {
-    return undefined;
+  if (ruleId === undefined) {
+    throw new Error(
+      `axe-core violation at index ${violationIndex} must have a non-empty id.`,
+    );
   }
 
-  const rawNodes = Array.isArray(violation.nodes) ? violation.nodes : [];
+  if (!Array.isArray(violation.nodes)) {
+    throw new Error(
+      `axe-core violation "${ruleId}" must contain a nodes array.`,
+    );
+  }
+
+  const rawNodes = violation.nodes;
   const retainedNodes = rawNodes.slice(0, reportLimits.nodesPerViolation);
 
   if (retainedNodes.length < rawNodes.length) {
@@ -120,7 +134,9 @@ function normalizeViolation(
     impact: normalizeImpact(violation.impact),
     wcagReferences: deriveWcagReferences(violation.tags),
     totalNodeCount: rawNodes.length,
-    nodes: retainedNodes.map((node) => normalizeNode(node, truncation)),
+    nodes: retainedNodes.map((node, nodeIndex) =>
+      normalizeNode(node, ruleId, nodeIndex, truncation),
+    ),
     guidance: getVietnameseGuidance(ruleId),
   };
 
@@ -143,28 +159,51 @@ function normalizeViolation(
   return normalized;
 }
 
-function normalizeNode(input: unknown, truncation: TruncationState): AffectedNode {
+function normalizeNode(
+  input: unknown,
+  ruleId: string,
+  nodeIndex: number,
+  truncation: TruncationState,
+): AffectedNode {
   const node = asRecord(input);
+
+  if (node === undefined || !isValidSelectorTarget(node.target)) {
+    throw new Error(
+      `axe-core node ${nodeIndex} for violation "${ruleId}" has an invalid target.`,
+    );
+  }
+
   const normalized: AffectedNode = {
-    target: normalizeTarget(node?.target, truncation),
+    target: normalizeTarget(node.target, truncation),
   };
 
   assignLimitedString(
     normalized,
     "html",
-    node?.html,
+    node.html,
     reportLimits.htmlExcerptLength,
     truncation,
   );
   assignLimitedString(
     normalized,
     "failureSummary",
-    node?.failureSummary,
+    node.failureSummary,
     reportLimits.failureSummaryLength,
     truncation,
   );
 
   return normalized;
+}
+
+function isValidSelectorTarget(input: unknown): boolean {
+  return (
+    Array.isArray(input) &&
+    input.every(
+      (part) =>
+        typeof part === "string" ||
+        (Array.isArray(part) && part.every((item) => typeof item === "string")),
+    )
+  );
 }
 
 function normalizeTarget(
@@ -330,21 +369,12 @@ function truncate(
   return `${input.slice(0, maximumLength - 1)}…`;
 }
 
-function buildWarnings(
-  ignoredViolationCount: number,
-  truncation: TruncationState,
-): string[] {
+function buildWarnings(truncation: TruncationState): string[] {
   const warnings: string[] = [];
-
-  if (ignoredViolationCount > 0) {
-    warnings.push(
-      `Ignored ${ignoredViolationCount} malformed violation ${ignoredViolationCount === 1 ? "entry" : "entries"}.`,
-    );
-  }
 
   if (truncation.nodes) {
     warnings.push(
-      `Retained at most ${reportLimits.nodesPerViolation} affected-node details per violation; total affected-element counts remain unchanged.`,
+      `Retained at most ${reportLimits.nodesPerViolation} affected-node details per violation; total affected-element occurrence counts remain unchanged.`,
     );
   }
 

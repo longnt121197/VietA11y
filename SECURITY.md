@@ -18,15 +18,18 @@ loopback, multicast, and selected reserved IPv4 and IPv6 destinations, including
 IPv4-mapped IPv6 forms. Hostnames are resolved before navigation; an empty,
 failed, malformed, or mixed public/prohibited answer set is rejected.
 
-Chromium request-stage interception repeats the destination policy for main
-navigation, redirect targets, frames, and HTTP(S) subresources before dispatch.
-Each scan uses a fresh, non-persistent context with downloads and service workers
-disabled. Browser, context, and page cleanup is attempted for every outcome.
+Browser-context routing repeats the destination policy for main navigation,
+redirect targets, frames, HTTP(S) subresources, and popup/new-page requests
+before dispatch. Context-level WebSocket routing validates `ws://` and `wss://`
+destinations before allowing a handshake. Each scan uses a fresh,
+non-persistent context with downloads and service workers disabled. Browser,
+context, and page cleanup is attempted for every outcome.
 
 Navigation is bounded to 30 seconds and the overall scan deadline is 60 seconds.
 One process permits two active scans and rejects excess work without queuing.
 Normalized reports bound retained node details and untrusted string lengths while
-preserving true affected-element counts.
+preserving true affected-element occurrence counts across violated rules. These
+are not unique DOM-element counts.
 
 The Web API returns fixed user-facing messages rather than internal exception
 text, causes, or stacks. Scan-derived values are rendered as React text. Axe
@@ -55,11 +58,11 @@ threat review and security gate.
 
 ## Test-only loopback seam
 
-Production `scanPage()` always blocks loopback. Deterministic integration and E2E
-tests use an internal helper that requires an explicit marker and one exact
-loopback origin. It is not a general allowlist and is not accepted from the
-`POST /api/scans` request body. Do not set the internal fixture environment
-variables in a deployed instance.
+Production `scanPage()` and `POST /api/scans` always block loopback.
+Deterministic integration and E2E tests use a helper located only under scanner
+test sources. It requires an explicit marker and one exact loopback origin, is
+not exported by the scanner package, and is invoked directly by the test runner.
+Production code has no request-body or environment-variable path to activate it.
 
 ## Supported runtime
 
@@ -76,6 +79,11 @@ browser E2E checks before release.
 ## Reporting a vulnerability
 
 Please avoid including secrets, private URLs, page content, or reproduction data
-from systems you do not own in a public report. Use the repository host's private
-security-reporting channel when available; otherwise contact a maintainer before
-sharing sensitive details.
+from systems you do not own in a public report. Submit sensitive reports through
+GitHub's private vulnerability-reporting form for this repository:
+
+<https://github.com/longnt121197/vieta11y/security/advisories/new>
+
+If the private form is unavailable, open a minimal public issue asking for a
+private contact channel. Do not include vulnerability details or sensitive
+reproduction data in that issue.

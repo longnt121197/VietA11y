@@ -2,6 +2,12 @@
   "name": "@vieta11y/web",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/longnt121197/vieta11y.git",
+    "directory": "apps/web"
+  },
   "type": "module",
   "scripts": {
     "dev": "next dev",

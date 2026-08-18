@@ -78,7 +78,11 @@ export function ScanExperience() {
       const body: unknown = await response.json().catch(() => undefined);
 
       if (!response.ok) {
-        setError({ kind: "request", message: readErrorMessage(body) });
+        const responseError = readErrorResponse(body);
+        setError({
+          kind: responseError.isValidation ? "validation" : "request",
+          message: responseError.message,
+        });
         return;
       }
 
@@ -212,10 +216,14 @@ function ScanResults({
             value={report.summary.violatedRuleCount}
           />
           <SummaryValue
-            label="Phần tử bị ảnh hưởng"
+            label="Lượt phần tử bị ảnh hưởng"
             value={report.summary.affectedElementCount}
           />
         </dl>
+        <p className="mt-3 text-sm leading-6 text-slate-600">
+          Một phần tử có thể được tính lại khi cùng vi phạm nhiều quy tắc; đây
+          không phải số phần tử duy nhất trên trang.
+        </p>
 
         <h4 className="mt-7 text-lg font-semibold text-slate-950">
           Phân bố quy tắc theo mức tác động
@@ -506,7 +514,10 @@ function isScanSuccessBody(input: unknown): input is ScanSuccessBody {
   );
 }
 
-function readErrorMessage(input: unknown): string {
+function readErrorResponse(input: unknown): {
+  message: string;
+  isValidation: boolean;
+} {
   if (
     typeof input === "object" &&
     input !== null &&
@@ -516,10 +527,17 @@ function readErrorMessage(input: unknown): string {
     "message" in input.error &&
     typeof input.error.message === "string"
   ) {
-    return (input as ScanErrorBody).error.message;
+    const error = (input as ScanErrorBody).error;
+    return {
+      message: error.message,
+      isValidation: error.code === "INVALID_INPUT",
+    };
   }
 
-  return "Không thể hoàn tất lần quét. Vui lòng thử lại.";
+  return {
+    message: "Không thể hoàn tất lần quét. Vui lòng thử lại.",
+    isValidation: false,
+  };
 }
 
 function formatTarget(target: SelectorTarget): string {

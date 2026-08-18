@@ -1,9 +1,5 @@
 import { ScannerError, scanPage } from "@vieta11y/scanner";
 import type { ScanReport, ScannerErrorCode } from "@vieta11y/scanner";
-import {
-  scanTrustedLocalFixture,
-  trustedLocalFixtureMarker,
-} from "@vieta11y/scanner/internal-test-support";
 
 export interface ScanSuccessBody {
   report: ScanReport;
@@ -36,7 +32,7 @@ const invalidRequestResult: ScanApiResult = {
 
 export async function createScanApiResult(
   input: unknown,
-  scan: ScanFunction = scanForRequest,
+  scan: ScanFunction = scanPage,
 ): Promise<ScanApiResult> {
   const url = readUrl(input);
 
@@ -150,15 +146,4 @@ function safeError(
     status,
     body: { error: { code, message } },
   };
-}
-
-function scanForRequest(url: string): Promise<ScanReport> {
-  const trustedOrigin = process.env.VIETA11Y_INTERNAL_TEST_FIXTURE_ORIGIN;
-  const marker = process.env.VIETA11Y_INTERNAL_TEST_FIXTURE_MARKER;
-
-  if (trustedOrigin !== undefined && marker === trustedLocalFixtureMarker) {
-    return scanTrustedLocalFixture(url, trustedOrigin, marker);
-  }
-
-  return scanPage(url);
 }

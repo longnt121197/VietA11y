@@ -9,7 +9,7 @@ import { scanPageWithDependencies } from "../dist/scan-page.js";
 import {
   scanTrustedLocalFixture,
   trustedLocalFixtureMarker,
-} from "../dist/internal-test-support.js";
+} from "./scan-trusted-local-fixture.mjs";
 import { startFixtureServer } from "./fixture-server.mjs";
 
 let fixtureServer;
@@ -133,6 +133,81 @@ test("blocks prohibited subresources before they reach a local server", async ()
   }
 });
 
+test("blocks a prohibited frame before its destination receives a request", async () => {
+  const blockedServer = await startFixtureServer();
+  try {
+    const target = blockedServer.url("/frame-target");
+    const path = `/frame-launcher?url=${encodeURIComponent(target)}`;
+    const report = await scanFixture(path);
+
+    assert.equal(report.metadata.documentTitle, "Frame fixture");
+    assert.equal(blockedServer.requestCount("/frame-target"), 0);
+  } finally {
+    await blockedServer.close();
+  }
+});
+
+test("blocks a prohibited popup before its destination receives a request", async () => {
+  const blockedServer = await startFixtureServer();
+  try {
+    const target = blockedServer.url("/popup-target");
+    const path = `/popup-launcher?url=${encodeURIComponent(target)}`;
+    const report = await scanFixture(path);
+
+    assert.equal(report.metadata.documentTitle, "Popup fixture");
+    assert.equal(blockedServer.requestCount("/popup-target"), 0);
+  } finally {
+    await blockedServer.close();
+  }
+});
+
+test("allows a popup request to the exact trusted test origin", async () => {
+  const previousCount = fixtureServer.requestCount("/baseline");
+  const target = fixtureServer.url("/baseline");
+  const path = `/popup-launcher?url=${encodeURIComponent(target)}`;
+
+  await scanFixture(path);
+  assert.equal(fixtureServer.requestCount("/baseline"), previousCount + 1);
+});
+
+test("blocks a popup redirect before its prohibited destination receives a request", async () => {
+  const blockedServer = await startFixtureServer();
+  try {
+    const prohibitedTarget = blockedServer.url("/popup-redirect-target");
+    const redirect = fixtureServer.url(
+      `/redirect-to?url=${encodeURIComponent(prohibitedTarget)}`,
+    );
+    const path = `/popup-launcher?url=${encodeURIComponent(redirect)}`;
+
+    await scanFixture(path);
+    assert.equal(blockedServer.requestCount("/popup-redirect-target"), 0);
+  } finally {
+    await blockedServer.close();
+  }
+});
+
+test("blocks a prohibited WebSocket before its destination receives a handshake", async () => {
+  const blockedServer = await startFixtureServer();
+  try {
+    const target = blockedServer.url("/private-socket").replace(/^http:/, "ws:");
+    const path = `/websocket-launcher?url=${encodeURIComponent(target)}`;
+    const report = await scanFixture(path);
+
+    assert.equal(report.metadata.documentTitle, "WebSocket fixture");
+    assert.equal(blockedServer.webSocketHandshakeCount("/private-socket"), 0);
+  } finally {
+    await blockedServer.close();
+  }
+});
+
+test("allows WebSocket traffic to the exact trusted test origin", async () => {
+  const target = fixtureServer.url("/trusted-socket").replace(/^http:/, "ws:");
+  const path = `/websocket-launcher?url=${encodeURIComponent(target)}`;
+
+  await scanFixture(path);
+  assert.equal(fixtureServer.webSocketHandshakeCount("/trusted-socket"), 1);
+});
+
 test("reports typed navigation and overall timeouts", async () => {
   await assert.rejects(
     scanFixture("/hang", { navigationTimeoutMs: 100 }),
@@ -152,6 +227,13 @@ test("reports a typed navigation failure", async () => {
   await assert.rejects(
     scanFixture("/disconnect"),
     (error) => error instanceof ScannerError && error.code === "NAVIGATION_FAILED",
+  );
+});
+
+test("turns malformed axe output into a typed scan failure", async () => {
+  await assert.rejects(
+    scanWithFakeBrowser(createFakeBrowser([], "malformed-axe")),
+    (error) => error instanceof ScannerError && error.code === "SCAN_FAILED",
   );
 });
 
@@ -240,6 +322,7 @@ function scanWithFakeBrowser(browser, options = {}, capacity) {
 
 function createFakeBrowser(events, failure, navigationGate) {
   let routeHandler;
+  let webSocketRouteHandler;
   let evaluationCount = 0;
   const page = {
     async goto() {
@@ -257,6 +340,9 @@ function createFakeBrowser(events, failure, navigationGate) {
     mainFrame() {
       return page;
     },
+    context() {
+      return context;
+    },
     async evaluate(_expression, argument) {
       events.push("page.evaluate");
       evaluationCount += 1;
@@ -269,6 +355,9 @@ function createFakeBrowser(events, failure, navigationGate) {
       if (failure === "hang-axe" && evaluationCount === 2) {
         return new Promise(() => {});
       }
+      if (failure === "malformed-axe" && evaluationCount >= 3) {
+        return {};
+      }
       return evaluationCount === 1 ? undefined : { violations: [] };
     },
     async close() {
@@ -276,6 +365,7 @@ function createFakeBrowser(events, failure, navigationGate) {
     },
   };
   const context = {
+    on() {},
     async newPage() {
       events.push("context.newPage");
       return page;
@@ -294,6 +384,14 @@ function createFakeBrowser(events, failure, navigationGate) {
         },
       };
     },
+    async route(_url, handler) {
+      events.push("context.route");
+      routeHandler = handler;
+    },
+    async routeWebSocket(_url, handler) {
+      events.push("context.routeWebSocket");
+      webSocketRouteHandler = handler;
+    },
     async close() {
       events.push("context.close");
     },
@@ -302,6 +400,9 @@ function createFakeBrowser(events, failure, navigationGate) {
   return {
     get routeHandler() {
       return routeHandler;
+    },
+    get webSocketRouteHandler() {
+      return webSocketRouteHandler;
     },
     async newContext(options) {
       events.push("browser.newContext");

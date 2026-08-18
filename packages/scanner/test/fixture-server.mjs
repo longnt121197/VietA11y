@@ -53,6 +53,7 @@ const pages = {
 export async function startFixtureServer() {
   const sockets = new Set();
   const requestCounts = new Map();
+  const webSocketHandshakeCounts = new Map();
   const server = http.createServer((request, response) => {
     const requestUrl = new URL(request.url ?? "/", "http://fixture.test");
     requestCounts.set(
@@ -70,6 +71,27 @@ export async function startFixtureServer() {
       const source = escapeHtmlAttribute(requestUrl.searchParams.get("url") ?? "");
       response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
       response.end(`<!doctype html><html lang="en"><head><title>Subresource fixture</title></head><body><main><h1>Subresource</h1><img alt="probe" src="${source}"></main></body></html>`);
+      return;
+    }
+
+    if (requestUrl.pathname === "/frame-launcher") {
+      const source = escapeHtmlAttribute(requestUrl.searchParams.get("url") ?? "");
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      response.end(`<!doctype html><html lang="en"><head><title>Frame fixture</title></head><body><main><h1>Frame</h1><iframe title="probe" src="${source}"></iframe></main></body></html>`);
+      return;
+    }
+
+    if (requestUrl.pathname === "/popup-launcher") {
+      const target = serializeScriptString(requestUrl.searchParams.get("url") ?? "");
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      response.end(`<!doctype html><html lang="en"><head><title>Popup fixture</title></head><body><main><h1>Popup</h1></main><script>window.open(${target});</script></body></html>`);
+      return;
+    }
+
+    if (requestUrl.pathname === "/websocket-launcher") {
+      const target = serializeScriptString(requestUrl.searchParams.get("url") ?? "");
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      response.end(`<!doctype html><html lang="en"><head><title>WebSocket fixture</title></head><body><main><h1>WebSocket</h1></main><script>new WebSocket(${target});</script></body></html>`);
       return;
     }
 
@@ -120,6 +142,15 @@ export async function startFixtureServer() {
     socket.on("close", () => sockets.delete(socket));
   });
 
+  server.on("upgrade", (request, socket) => {
+    const requestUrl = new URL(request.url ?? "/", "http://fixture.test");
+    webSocketHandshakeCounts.set(
+      requestUrl.pathname,
+      (webSocketHandshakeCounts.get(requestUrl.pathname) ?? 0) + 1,
+    );
+    socket.destroy();
+  });
+
   await new Promise((resolve, reject) => {
     server.once("error", reject);
     server.listen(0, "127.0.0.1", resolve);
@@ -141,6 +172,9 @@ export async function startFixtureServer() {
     requestCount(pathname) {
       return requestCounts.get(pathname) ?? 0;
     },
+    webSocketHandshakeCount(pathname) {
+      return webSocketHandshakeCounts.get(pathname) ?? 0;
+    },
     async close() {
       for (const socket of sockets) {
         socket.destroy();
@@ -151,6 +185,10 @@ export async function startFixtureServer() {
       });
     },
   };
+}
+
+function serializeScriptString(input) {
+  return JSON.stringify(input).replaceAll("<", "\\u003c");
 }
 
 function escapeHtmlAttribute(input) {

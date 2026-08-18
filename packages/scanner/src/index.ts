@@ -1,8 +1,3 @@
-export {
-  normalizeAxeResults,
-  normalizeImpact,
-  summarizeViolations,
-} from "./normalize.js";
 export { ScannerError } from "./errors.js";
 export { scanPage } from "./scan-page.js";
 export type {

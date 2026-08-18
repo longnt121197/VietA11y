@@ -7,6 +7,10 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { startFixtureServer } from "../../../packages/scanner/test/fixture-server.mjs";
+import {
+  scanTrustedLocalFixture,
+  trustedLocalFixtureMarker,
+} from "../../../packages/scanner/test/scan-trusted-local-fixture.mjs";
 
 const requireFromWeb = createRequire(import.meta.url);
 const requireFromScanner = createRequire(
@@ -27,7 +31,7 @@ test(
 
     try {
       fixtureServer = await startFixtureServer();
-      appServer = await startNextServer(fixtureServer.origin);
+      appServer = await startNextServer();
       browser = await chromium.launch({ headless: true });
 
       const page = await browser.newPage({
@@ -53,6 +57,7 @@ test(
       assert.equal(await urlInput.getAttribute("aria-invalid"), "true");
       assert.equal(await page.evaluate(() => document.activeElement?.id), "scan-url");
 
+      let responseMode = "invalid-input";
       let interceptedRequest;
       let markRequestIntercepted;
       const requestIntercepted = new Promise((resolve) => {
@@ -64,11 +69,74 @@ test(
 
       await page.route("**/api/scans", async (route) => {
         interceptedRequest = route.request();
+
+        if (responseMode === "invalid-input") {
+          await route.fulfill({
+            status: 400,
+            contentType: "application/json",
+            body: JSON.stringify({
+              error: {
+                code: "INVALID_INPUT",
+                message: "URL thử nghiệm không đáp ứng giới hạn của máy chủ.",
+              },
+            }),
+          });
+          return;
+        }
+
+        if (responseMode === "scan-failed") {
+          await route.fulfill({
+            status: 500,
+            contentType: "application/json",
+            body: JSON.stringify({
+              error: {
+                code: "SCAN_FAILED",
+                message: "Không thể hoàn tất lần quét do lỗi máy chủ.",
+              },
+            }),
+          });
+          return;
+        }
+
         markRequestIntercepted();
         await holdRequest;
-        await route.continue();
+        const requestBody = route.request().postDataJSON();
+        const report = await scanTrustedLocalFixture(
+          requestBody.url,
+          fixtureServer.origin,
+          trustedLocalFixtureMarker,
+        );
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ report }),
+        });
       });
 
+      const serverRejectedValue = "https://example.test/server-rejected";
+      await urlInput.fill(serverRejectedValue);
+      await urlInput.press("Enter");
+
+      const serverValidationError = page.locator("#scan-error");
+      await assertVisible(serverValidationError);
+      assert.match(await serverValidationError.innerText(), /giới hạn của máy chủ/);
+      assert.equal(await urlInput.getAttribute("aria-invalid"), "true");
+      assert.equal(await page.evaluate(() => document.activeElement?.id), "scan-url");
+      assert.equal(await urlInput.inputValue(), serverRejectedValue);
+
+      responseMode = "scan-failed";
+      await urlInput.fill(fixtureServer.url("/web-e2e"));
+      await urlInput.press("Enter");
+
+      const scanFailure = page.locator("#scan-error");
+      await assertVisible(scanFailure);
+      assert.match(await scanFailure.innerText(), /lỗi máy chủ/);
+      assert.equal(
+        await page.getByText(/Không phát hiện vi phạm tự động/).count(),
+        0,
+      );
+
+      responseMode = "success";
       await urlInput.fill(fixtureServer.url("/web-e2e"));
       await urlInput.press("Tab");
 
@@ -120,8 +188,11 @@ test(
         String(report.summary.violatedRuleCount),
       );
       assert.equal(
-        await readDefinitionValue(page, "Phần tử bị ảnh hưởng"),
+        await readDefinitionValue(page, "Lượt phần tử bị ảnh hưởng"),
         String(report.summary.affectedElementCount),
+      );
+      await assertVisible(
+        page.getByText(/không phải số phần tử duy nhất trên trang/i),
       );
 
       await assertVisible(page.getByText("Hướng dẫn tiếng Việt đã biên soạn").first());
@@ -209,7 +280,7 @@ async function readDefinitionValue(page, label) {
   return term.evaluate((element) => element.nextElementSibling?.textContent?.trim());
 }
 
-async function startNextServer(trustedFixtureOrigin) {
+async function startNextServer() {
   const port = await allocatePort();
   const nextBin = requireFromWeb.resolve("next/dist/bin/next");
   const logs = [];
@@ -221,8 +292,6 @@ async function startNextServer(trustedFixtureOrigin) {
       env: {
         ...process.env,
         NEXT_TELEMETRY_DISABLED: "1",
-        VIETA11Y_INTERNAL_TEST_FIXTURE_ORIGIN: trustedFixtureOrigin,
-        VIETA11Y_INTERNAL_TEST_FIXTURE_MARKER: "vieta11y-explicit-local-fixture",
       },
       stdio: ["ignore", "pipe", "pipe"],
     },

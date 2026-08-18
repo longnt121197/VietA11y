@@ -47,6 +47,8 @@ test("classifies representative IPv4 and IPv6 prohibited destinations", () => {
     "fe80::1",
     "ff02::1",
     "2001:db8::1",
+    "100:0:0:1::1",
+    "5f00::1",
     "::ffff:127.0.0.1",
     "2002:7f00:1::",
   ];
@@ -56,6 +58,38 @@ test("classifies representative IPv4 and IPv6 prohibited destinations", () => {
   }
 
   assert.equal(isProhibitedAddress("93.184.216.34"), false);
+  assert.equal(isProhibitedAddress("2606:4700:4700::1111"), false);
+});
+
+test("matches intended IPv6 CIDRs without overblocking adjacent addresses", () => {
+  const boundaries = [
+    {
+      inside: ["3fff::", "3fff:fff:ffff:ffff:ffff:ffff:ffff:ffff"],
+      outside: ["3ffe:ffff:ffff:ffff:ffff:ffff:ffff:ffff", "3fff:1000::"],
+    },
+    {
+      inside: ["2001:2::", "2001:2:0:ffff:ffff:ffff:ffff:ffff"],
+      outside: ["2001:1:ffff:ffff:ffff:ffff:ffff:ffff", "2001:2:1::"],
+    },
+    {
+      inside: ["64:ff9b::", "64:ff9b::ffff:ffff"],
+      outside: ["64:ff9a:ffff:ffff:ffff:ffff:ffff:ffff", "64:ff9b:0:1::"],
+    },
+    {
+      inside: ["fc00::", "fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"],
+      outside: ["fbff:ffff:ffff:ffff:ffff:ffff:ffff:ffff", "fe00::"],
+    },
+  ];
+
+  for (const { inside, outside } of boundaries) {
+    for (const address of inside) {
+      assert.equal(isProhibitedAddress(address), true, address);
+    }
+    for (const address of outside) {
+      assert.equal(isProhibitedAddress(address), false, address);
+    }
+  }
+
   assert.equal(isProhibitedAddress("2606:4700:4700::1111"), false);
 });
 
@@ -88,6 +122,7 @@ test("checks every DNS answer and rejects if any address is prohibited", async (
     },
   });
   await allowed.assertAllowed("https://public.example/");
+  await allowed.assertAllowed("wss://public.example/socket");
 
   const mixed = createDestinationPolicy({
     async resolveHostname() {
@@ -119,8 +154,13 @@ test("reports DNS failures and empty results with a typed error", async () => {
 test("the test seam trusts only one exact origin", async () => {
   const policy = createDestinationPolicy({ trustedTestOrigin: "http://127.0.0.1:4321" });
   await policy.assertAllowed("http://127.0.0.1:4321/fixture");
+  await policy.assertAllowed("ws://127.0.0.1:4321/socket");
   await assert.rejects(
     policy.assertAllowed("http://127.0.0.1:4322/fixture"),
+    (error) => error instanceof ScannerError && error.code === "BLOCKED_TARGET",
+  );
+  await assert.rejects(
+    policy.assertAllowed("ws://127.0.0.1:4322/socket"),
     (error) => error instanceof ScannerError && error.code === "BLOCKED_TARGET",
   );
 });

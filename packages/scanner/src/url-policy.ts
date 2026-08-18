@@ -5,6 +5,30 @@ import { ScannerError } from "./errors.js";
 
 const maximumUrlLength = 2_048;
 
+interface Ipv6Cidr {
+  network: readonly number[];
+  prefixLength: number;
+}
+
+const prohibitedIpv6Cidrs = [
+  "::/96",
+  "64:ff9b::/96",
+  "64:ff9b:1::/48",
+  "100::/64",
+  "100:0:0:1::/64",
+  "2001::/32",
+  "2001:2::/48",
+  "2001:10::/28",
+  "2001:20::/28",
+  "2001:db8::/32",
+  "3fff::/20",
+  "5f00::/16",
+  "fc00::/7",
+  "fe80::/10",
+  "fec0::/10",
+  "ff00::/8",
+].map(parseIpv6Cidr);
+
 export interface ResolvedAddress {
   address: string;
   family: number;
@@ -79,7 +103,7 @@ export function createDestinationPolicy(
         );
       }
 
-      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      if (!isAllowedBrowserNetworkProtocol(parsed.protocol)) {
         throw new ScannerError(
           "BLOCKED_TARGET",
           "A browser request used a prohibited network scheme.",
@@ -93,7 +117,10 @@ export function createDestinationPolicy(
         );
       }
 
-      if (trustedTestOrigin !== undefined && parsed.origin === trustedTestOrigin) {
+      if (
+        trustedTestOrigin !== undefined &&
+        isTrustedTestDestination(parsed, trustedTestOrigin)
+      ) {
         return;
       }
 
@@ -171,26 +198,7 @@ export function isProhibitedAddress(input: string): boolean {
     return true;
   }
 
-  const allZero = words.every((word) => word === 0);
-  const loopback = words.slice(0, 7).every((word) => word === 0) && words[7] === 1;
   const first = words[0] ?? 0;
-
-  if (
-    allZero ||
-    loopback ||
-    (first & 0xfe00) === 0xfc00 ||
-    (first & 0xffc0) === 0xfe80 ||
-    (first & 0xffc0) === 0xfec0 ||
-    (first & 0xff00) === 0xff00 ||
-    (first === 0x0064 && words[1] === 0xff9b) ||
-    (first === 0x2001 && words[1] === 0x0db8) ||
-    (first === 0x2001 && words[1] === 0x0002) ||
-    (first === 0x2001 && (words[1] ?? 0) >= 0x0010 && (words[1] ?? 0) <= 0x002f) ||
-    (first & 0xfff0) === 0x3ff0 ||
-    (first === 0x0100 && words.slice(1, 4).every((word) => word === 0))
-  ) {
-    return true;
-  }
 
   const isMappedIpv4 =
     words.slice(0, 5).every((word) => word === 0) && words[5] === 0xffff;
@@ -204,7 +212,7 @@ export function isProhibitedAddress(input: string): boolean {
     ]);
   }
 
-  if (words.slice(0, 6).every((word) => word === 0)) {
+  if (prohibitedIpv6Cidrs.some((cidr) => isIpv6InCidr(words, cidr))) {
     return true;
   }
 
@@ -219,8 +227,50 @@ export function isProhibitedAddress(input: string): boolean {
     ]);
   }
 
-  // Teredo can encode an IPv4 destination and is blocked conservatively.
-  return first === 0x2001 && words[1] === 0;
+  return false;
+}
+
+function parseIpv6Cidr(input: string): Ipv6Cidr {
+  const [address, prefixText, ...extra] = input.split("/");
+  const prefixLength = Number(prefixText);
+  const network = address === undefined ? undefined : parseIpv6(address);
+
+  if (
+    extra.length > 0 ||
+    network === undefined ||
+    !Number.isInteger(prefixLength) ||
+    prefixLength < 0 ||
+    prefixLength > 128
+  ) {
+    throw new Error(`Invalid internal IPv6 CIDR: ${input}`);
+  }
+
+  return { network, prefixLength };
+}
+
+function isIpv6InCidr(
+  address: readonly number[],
+  cidr: Ipv6Cidr,
+): boolean {
+  const completeWords = Math.floor(cidr.prefixLength / 16);
+
+  for (let index = 0; index < completeWords; index += 1) {
+    if (address[index] !== cidr.network[index]) {
+      return false;
+    }
+  }
+
+  const remainingBits = cidr.prefixLength % 16;
+
+  if (remainingBits === 0) {
+    return true;
+  }
+
+  const mask = (0xffff << (16 - remainingBits)) & 0xffff;
+  return (
+    ((address[completeWords] ?? 0) & mask) ===
+    ((cidr.network[completeWords] ?? 0) & mask)
+  );
 }
 
 async function resolveAllAddresses(
@@ -246,6 +296,27 @@ function readTrustedTestOrigin(input: string | undefined): string | undefined {
   }
 
   return parsed.origin;
+}
+
+function isAllowedBrowserNetworkProtocol(protocol: string): boolean {
+  return (
+    protocol === "http:" ||
+    protocol === "https:" ||
+    protocol === "ws:" ||
+    protocol === "wss:"
+  );
+}
+
+function isTrustedTestDestination(url: URL, trustedOrigin: string): boolean {
+  const trusted = new URL(trustedOrigin);
+  const equivalentProtocol =
+    url.protocol === "ws:"
+      ? "http:"
+      : url.protocol === "wss:"
+        ? "https:"
+        : url.protocol;
+
+  return equivalentProtocol === trusted.protocol && url.host === trusted.host;
 }
 
 function normalizeHostname(input: string): string {

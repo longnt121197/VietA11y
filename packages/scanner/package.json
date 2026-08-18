@@ -2,6 +2,12 @@
   "name": "@vieta11y/scanner",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/longnt121197/vieta11y.git",
+    "directory": "packages/scanner"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -9,10 +15,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./internal-test-support": {
-      "types": "./dist/internal-test-support.d.ts",
-      "import": "./dist/internal-test-support.js"
     }
   },
   "files": [
