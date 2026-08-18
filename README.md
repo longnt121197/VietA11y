@@ -16,15 +16,15 @@ HTTP or HTTPS URL, runs the framework-independent Playwright and axe-core
 scanner synchronously, and presents transparent rule, affected-element
 occurrence, and impact counts. The occurrence count sums axe nodes across
 violated rules; it is not a count of unique DOM elements. Findings retain their
-authoritative axe reference and show
-curated Vietnamese guidance when it exists or an explicit unavailable state
-when it does not.
+authoritative axe reference and show one of the 10 initial curated Vietnamese
+guidance entries when it exists or an explicit unavailable state when it does
+not.
 
-The v0.1 application is intended for local development or controlled
-self-hosting. It includes application-level destination and resource guards,
-but it is **not approved for public arbitrary-URL hosting**. Exposing scanning
-to untrusted users requires a separate public-hosting security gate and
-deployment-level network controls.
+The v0.1.0 application is intended for local development or controlled
+self-hosting. It includes application-level destination and resource guards.
+**Unrestricted public arbitrary-URL hosting is not approved by v0.1.0.**
+Exposing scanning to untrusted users requires a separate public-hosting
+security gate and deployment-level network controls.
 
 ## Repository structure
 
@@ -142,7 +142,7 @@ not scan public websites.
 
 ## Roadmap
 
-- [ ] v0.1 — Web accessibility scanner
+- [x] v0.1 — Web accessibility scanner
 - [ ] v0.2 — Vietnamese WCAG knowledge base
 - [ ] v0.3 — CLI
 - [ ] v0.4 — GitHub Action
