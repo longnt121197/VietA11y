@@ -35,6 +35,19 @@ npm run build
 git diff --check
 ```
 
+`npm run verify` is a convenience that runs the first four in that same order
+and stops at the first failure:
+
+```sh
+npm run verify
+git diff --check
+```
+
+It is a shortcut for the list above, not a replacement for it. Run the
+individual commands when a check fails and you want to iterate on just that
+one, and quote the individual command in bug reports so it is clear which
+stage failed. CI keeps running the steps separately so its logs stay readable.
+
 Tests use deterministic local fixtures and must not depend on arbitrary public
 websites. If a required check cannot run in your environment, explain exactly
 which check and why in the pull request.
