@@ -9,6 +9,8 @@ project has a curated entry.
 > **Status:** v0.1.0 released on 2026-08-18 · open source under MIT · intended
 > for local development and controlled self-hosting
 
+![VietA11y initial scanner page with the controlled self-hosting notice and URL input](docs/images/vieta11y-home.png)
+
 At a glance:
 
 - single-page automated scanning with Playwright and axe-core;
@@ -19,6 +21,24 @@ At a glance:
 
 Automated testing does **not** prove full WCAG conformance and does not replace
 manual testing with keyboards, screen readers, and other assistive technology.
+
+## Quick start
+
+Prerequisites: Node.js 22 or newer and npm 10 or newer.
+
+```sh
+npm ci
+npm run browser:install --workspace @vieta11y/scanner
+npm run dev
+```
+
+Open the local URL printed by Next.js. Submit an absolute HTTP or HTTPS URL for
+a page you own or are authorized to test.
+
+The application itself runs locally, but the production scanner deliberately
+rejects localhost, private, link-local, and other prohibited network targets.
+Use a publicly reachable test page whose destination passes the documented
+policy; do not weaken that policy to scan a local target.
 
 ## Why VietA11y?
 
@@ -44,44 +64,18 @@ compliance score, certification service, or substitute for human review.
 - Bound scan time, concurrent work, and retained report details for controlled
   self-hosting.
 
-## Demo and screenshots
+## Visual workflow
 
-Real project screenshots have not been added yet. The planned set is:
+**Enter URL** → **Scan one page** → **Review automated accessibility findings**
+→ **Read curated Vietnamese guidance** → **Follow authoritative references**
 
-- the scanner input page;
-- a completed accessibility report; and
-- one curated Vietnamese guidance example.
+![Completed VietA11y report summary with violated-rule and affected-element counts, impact distribution, and the automated-testing limitation](docs/images/vieta11y-report.png)
 
-See [`docs/images/`](docs/images/) for the screenshot requirements. No mock or
-invented screenshots are used.
+![VietA11y image-alt finding with curated Vietnamese explanation, impact context, remediation, example, and affected elements](docs/images/vieta11y-guidance.png)
 
-## Quick start
-
-Prerequisites: Node.js 22 or newer and npm 10 or newer.
-
-```sh
-npm ci
-npm run browser:install --workspace @vieta11y/scanner
-npm run dev
-```
-
-Open the local URL printed by Next.js. Submit an absolute HTTP or HTTPS URL for
-a page you own or are authorized to test.
-
-The application itself runs locally, but the production scanner deliberately
-rejects localhost, private, link-local, and other prohibited network targets.
-Use a publicly reachable test page whose destination passes the documented
-policy; do not weaken that policy to scan a local target.
-
-## Example workflow
-
-1. Start VietA11y with `npm run dev`.
-2. Enter an authorized page URL and choose **Quét trang**.
-3. Review the violated-rule count and affected-element occurrence count.
-4. Open each finding to inspect its selector, safe HTML excerpt, axe reference,
-   and Vietnamese guidance when available.
-5. Apply a fix in the target project, test manually as appropriate, and scan the
-   relevant page state again.
+Open each finding to inspect its selector, safe HTML excerpt, axe reference, and
+Vietnamese guidance when available. Apply fixes in the target project, test
+manually as appropriate, and scan the relevant captured state again.
 
 Each scan is synchronous and launches an isolated Chromium context. VietA11y
 does not use or inherit your normal browser profile.
@@ -121,13 +115,14 @@ or use the [Vietnamese guidance issue template](.github/ISSUE_TEMPLATE/vietnames
 Bug reports, focused improvements, deterministic tests, accessibility feedback,
 and carefully researched Vietnamese knowledge contributions are welcome.
 
-- Read [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup, checks, scope, and pull
-  request expectations.
-- Browse the reviewed candidates in
-  [`.github/GOOD_FIRST_ISSUES.md`](.github/GOOD_FIRST_ISSUES.md) when looking for
-  a beginner-friendly contribution.
-- Use the repository issue templates for bugs, feature ideas, and Vietnamese
-  guidance proposals.
+- Browse [Issues](https://github.com/longnt121197/vieta11y/issues) or start with
+  the reviewed [Good First Issues](https://github.com/longnt121197/vieta11y/blob/main/.github/GOOD_FIRST_ISSUES.md).
+- Read [CONTRIBUTING.md](https://github.com/longnt121197/vieta11y/blob/main/CONTRIBUTING.md)
+  for setup, checks, scope, and pull request expectations.
+- Use [Discussions](https://github.com/longnt121197/vieta11y/discussions) for
+  non-sensitive questions and early ideas.
+- Read [SECURITY.md](https://github.com/longnt121197/vieta11y/blob/main/SECURITY.md)
+  before self-hosting or reporting a vulnerability.
 - Follow the [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) in all project spaces.
 
 The repository contains two workspaces:
@@ -138,7 +133,7 @@ The repository contains two workspaces:
 
 ## Roadmap
 
-Community Launch Phase 1 focuses on contributor onboarding, actionable feedback,
+Community launch work focuses on contributor onboarding, actionable feedback,
 documentation, tests, and the quality of the Vietnamese knowledge layer.
 Near-term development should remain small and evidence-driven.
 
