@@ -33,10 +33,12 @@ test("curated records have unique matching IDs and non-empty Vietnamese fields",
   }
 });
 
-// The registry currently curates these ten rules. The list is written out
+// The registry currently curates these eleven rules. The list is written out
 // rather than derived from curatedVietnameseRules so that a rule silently
 // disappearing from the registry fails here instead of shrinking the loop
-// below to nothing.
+// below to nothing. The cost is that adding a rule means adding it here too --
+// which is the intended trade, and #10 exercised it: html-lang-valid landed in
+// the registry and this table caught the drift.
 const curatedRuleIds = [
   "image-alt",
   "button-name",
@@ -44,6 +46,7 @@ const curatedRuleIds = [
   "link-name",
   "document-title",
   "html-has-lang",
+  "html-lang-valid",
   "color-contrast",
   "heading-order",
   "aria-command-name",
