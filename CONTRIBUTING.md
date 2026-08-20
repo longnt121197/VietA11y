@@ -23,6 +23,56 @@ Start the development server with `npm run dev`, then open the local URL printed
 by Next.js. The app runs locally, but its production policy intentionally blocks
 scanning localhost and private-network destinations.
 
+### Chromium installation troubleshooting
+
+The scanner drives a real Chromium through Playwright, so `npm ci` alone is not
+enough to run the tests. Installing that browser is the setup step most likely
+to fail, and it fails differently on each operating system.
+
+**The browser is missing.** The scanner's integration tests do not report this
+as a setup problem. They fail as ordinary assertion failures inside
+`packages/scanner/test/scan-page.test.mjs`, and the real cause appears further
+down the output as a `[cause]` on the error:
+
+```
+browserType.launch: Executable doesn't exist at
+  ...\ms-playwright\chromium_headless_shell-...\chrome-headless-shell...
+```
+
+If you see that, the fix is to run the install step:
+
+```sh
+npm run browser:install --workspace @vieta11y/scanner
+```
+
+The command is safe to re-run. It downloads only what is missing, so it is also
+the first thing to try after a Playwright version bump in `package-lock.json` —
+a new Playwright expects a matching browser build, and the old one no longer
+satisfies it.
+
+**Platform dependencies are missing (Linux).** On Linux the download can succeed
+while Chromium still refuses to start, because the shared libraries it links
+against are not present. The failure names a missing `lib*.so` rather than a
+missing executable. Install the system packages alongside the browser:
+
+```sh
+npx playwright install --with-deps chromium
+```
+
+`--with-deps` uses the system package manager and will ask for elevation. It is
+Linux-only; on macOS and Windows the plain `browser:install` above is all that
+is needed, and this is why CI — which runs on Linux — uses the `--with-deps`
+form while local setup does not.
+
+**Still failing.** Check that `npx playwright --version` matches the
+`playwright` version resolved in `package-lock.json` (the scanner depends on
+`playwright`, not `@playwright/test`), and see the official
+[Playwright browser installation
+guide](https://playwright.dev/docs/browsers#install-browsers) and its
+[system requirements](https://playwright.dev/docs/intro#system-requirements).
+If a check genuinely cannot run in your environment, say which one and why in
+the pull request rather than working around the browser or URL protections.
+
 ## Verification
 
 Run the same checks as CI before submitting a pull request:
