@@ -419,6 +419,140 @@ test(
   },
 );
 
+const UNSAFE_HELP_URL = "javascript:alert('axe')";
+const SAFE_HELP_URL = "https://dequeuniversity.com/rules/axe/4.10/image-alt";
+
+function helpUrlReport() {
+  const node = (selector) => ({ target: [selector], html: `<${selector} />` });
+  return {
+    metadata: {
+      submittedUrl: "https://fixture.test/help-urls",
+      finalUrl: "https://fixture.test/help-urls",
+      documentTitle: "Help URL fixture",
+      scannedAt: "2026-08-18T10:00:00.000Z",
+      durationMs: 12,
+    },
+    summary: {
+      violatedRuleCount: 2,
+      affectedElementCount: 2,
+      impactDistribution: {
+        minor: 0, moderate: 0, serious: 1, critical: 1, unknown: 0,
+      },
+    },
+    violations: [
+      {
+        ruleId: "image-alt",
+        impact: "critical",
+        help: "Ảnh phải có văn bản thay thế",
+        helpUrl: SAFE_HELP_URL,
+        wcagReferences: [],
+        totalNodeCount: 1,
+        nodes: [node("img")],
+        guidance: { status: "UNAVAILABLE" },
+      },
+      {
+        ruleId: "unsafe-reference-fixture",
+        impact: "serious",
+        help: "Tham chiếu không dùng lược đồ HTTP",
+        helpUrl: UNSAFE_HELP_URL,
+        wcagReferences: [],
+        totalNodeCount: 1,
+        nodes: [node("main")],
+        guidance: { status: "UNAVAILABLE" },
+      },
+    ],
+    warnings: [],
+  };
+}
+
+test(
+  "Report links only HTTP(S) axe references and shows other schemes as inert text",
+  { timeout: 120_000 },
+  async () => {
+    let appServer;
+    let browser;
+
+    try {
+      appServer = await startNextServer();
+      browser = await chromium.launch({ headless: true });
+      const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+
+      // The report is served straight from the route handler. The point of this
+      // test is the rendering boundary, so the scanner is deliberately not
+      // involved and nothing outside the app is ever contacted.
+      await page.route("**/api/scans", async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ report: helpUrlReport() }),
+        });
+      });
+
+      await page.goto(appServer.url, { waitUntil: "domcontentloaded" });
+
+      const urlInput = page.getByLabel("URL trang cần quét", { exact: true });
+      await urlInput.fill("https://fixture.test/help-urls");
+      await urlInput.press("Enter");
+
+      await assertVisible(
+        page.getByRole("heading", { name: "Kết quả quét", exact: true }),
+      );
+
+      const safeCard = page.locator("article").filter({
+        has: page.locator("code", { hasText: "image-alt" }),
+      });
+      const unsafeCard = page.locator("article").filter({
+        has: page.locator("code", { hasText: "unsafe-reference-fixture" }),
+      });
+
+      // The valid HTTPS reference stays a real, reachable link.
+      const safeLink = safeCard.getByRole("link", { name: /tài liệu chính thức của axe/i });
+      await assertVisible(safeLink);
+      assert.equal(await safeLink.getAttribute("href"), SAFE_HELP_URL);
+
+      // The javascript: reference must not become a link in any form...
+      assert.equal(await unsafeCard.getByRole("link").count(), 0);
+      assert.equal(
+        await page.locator(`a[href^="javascript:"]`).count(),
+        0,
+        "a javascript: URL must never reach an href",
+      );
+
+      // ...and must still be visible to the reader as plain text.
+      const inertText = unsafeCard.getByText(/không có URL HTTP\/HTTPS hợp lệ/);
+      await assertVisible(inertText);
+      assert.ok(
+        (await inertText.innerText()).includes(UNSAFE_HELP_URL),
+        "the rejected value should stay legible rather than being dropped",
+      );
+
+      // The link that does exist remains keyboard reachable.
+      await safeLink.focus();
+      assert.equal(
+        await safeLink.evaluate((element) => element === document.activeElement),
+        true,
+      );
+
+      assert.equal(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+        ),
+        true,
+      );
+      await assertNoAxeViolations(page, "report with a rejected help URL");
+    } finally {
+      const cleanupResults = await Promise.allSettled([browser?.close(), appServer?.close()]);
+      const cleanupErrors = cleanupResults
+        .filter((result) => result.status === "rejected")
+        .map((result) => result.reason);
+
+      if (cleanupErrors.length > 0) {
+        throw new AggregateError(cleanupErrors, "E2E process cleanup failed");
+      }
+    }
+  },
+);
+
 async function assertVisible(locator) {
   await locator.waitFor({ state: "visible" });
   assert.equal(await locator.isVisible(), true);
