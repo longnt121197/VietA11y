@@ -33,6 +33,66 @@ test("curated records have unique matching IDs and non-empty Vietnamese fields",
   }
 });
 
+// The registry currently curates these eleven rules. The list is written out
+// rather than derived from curatedVietnameseRules so that a rule silently
+// disappearing from the registry fails here instead of shrinking the loop
+// below to nothing. The cost is that adding a rule means adding it here too --
+// which is the intended trade, and #10 exercised it: html-lang-valid landed in
+// the registry and this table caught the drift.
+const curatedRuleIds = [
+  "image-alt",
+  "button-name",
+  "label",
+  "link-name",
+  "document-title",
+  "html-has-lang",
+  "html-lang-valid",
+  "color-contrast",
+  "heading-order",
+  "aria-command-name",
+  "aria-input-field-name",
+];
+
+const requiredTextFields = ["title", "explanation", "whyItMatters", "remediation"];
+
+test("every curated rule resolves through the public lookup", () => {
+  assert.deepEqual(
+    Object.keys(curatedVietnameseRules).toSorted(),
+    curatedRuleIds.toSorted(),
+    "the curated registry and this table have drifted apart",
+  );
+
+  for (const ruleId of curatedRuleIds) {
+    const entry = curatedVietnameseRules[ruleId];
+    const guidance = getVietnameseGuidance(ruleId);
+
+    assert.equal(guidance.status, "CURATED", `${ruleId} did not resolve as CURATED`);
+    assert.equal(entry.ruleId, ruleId, `${ruleId} is registered under a mismatched key`);
+
+    // Assert against the registered record rather than restating the
+    // Vietnamese paragraphs here: this pins that the lookup returns every
+    // required field, from that rule's own entry, without duplicating the
+    // guidance text into the test.
+    for (const field of requiredTextFields) {
+      assert.equal(
+        guidance[field],
+        entry[field],
+        `${ruleId}.${field} did not come from its own curated record`,
+      );
+      assert.ok(guidance[field].trim(), `${ruleId}.${field} is empty`);
+    }
+
+    assert.equal(
+      "example" in guidance,
+      entry.example !== undefined,
+      `${ruleId} disagrees with its record on whether an example exists`,
+    );
+    if (entry.example !== undefined) {
+      assert.equal(guidance.example, entry.example);
+    }
+  }
+});
+
 test("known rule returns curated Vietnamese guidance", () => {
   const guidance = getVietnameseGuidance("button-name");
 
