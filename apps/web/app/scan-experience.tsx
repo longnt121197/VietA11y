@@ -465,9 +465,16 @@ function AffectedNodeDetails({ node, index }: { node: AffectedNode; index: numbe
           </div>
         ) : null}
         {node.failureSummary !== undefined ? (
-          <div>
+          <div className="min-w-0">
             <h6 className="font-semibold text-slate-950">Tóm tắt lỗi từ axe</h6>
-            <p className="mt-2 whitespace-pre-line leading-7 text-slate-700">
+            {/* break-words, not break-all: this is prose from axe and Vietnamese
+                words should stay whole, but it quotes selectors and attribute
+                values that have no break opportunity at all. Without it a long
+                unbroken run overflows and the article's overflow-hidden clips
+                it -- the text is in the DOM and unreadable. min-w-0 because a
+                flex/grid item defaults to min-width:auto and would otherwise
+                refuse to shrink below its content. */}
+            <p className="mt-2 whitespace-pre-line break-words leading-7 text-slate-700">
               {node.failureSummary}
             </p>
           </div>

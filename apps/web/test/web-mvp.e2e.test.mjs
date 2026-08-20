@@ -419,6 +419,199 @@ test(
   },
 );
 
+// Public, synthetic test data only. A 300-character unbroken run is the shape
+// that breaks narrow layouts: no space, no hyphen, nowhere for the browser to
+// wrap unless the CSS says so.
+const LONG_UNBROKEN = "a".repeat(300);
+const LONG_TITLE = `Tieu-de-rat-dai-${LONG_UNBROKEN}`;
+const LONG_FINAL_URL = `https://fixture.test/${LONG_UNBROKEN}?q=${LONG_UNBROKEN}`;
+const LONG_SELECTOR = `div.${LONG_UNBROKEN} > img`;
+const LONG_FAILURE_SUMMARY = `Fix any of the following: ${LONG_UNBROKEN}`;
+const HTML_PROBE = '<img id="long-string-probe" src=x onerror="window.__pwned=1">';
+
+function longStringReport() {
+  return {
+    metadata: {
+      submittedUrl: "https://fixture.test/long",
+      finalUrl: LONG_FINAL_URL,
+      documentTitle: LONG_TITLE,
+      scannedAt: "2026-08-18T10:00:00.000Z",
+      durationMs: 34,
+    },
+    summary: {
+      violatedRuleCount: 1,
+      affectedElementCount: 1,
+      impactDistribution: {
+        minor: 0, moderate: 0, serious: 0, critical: 1, unknown: 0,
+      },
+    },
+    violations: [
+      {
+        ruleId: "image-alt",
+        impact: "critical",
+        help: "Ảnh phải có văn bản thay thế",
+        helpUrl: "https://dequeuniversity.com/rules/axe/4.10/image-alt",
+        wcagReferences: [],
+        totalNodeCount: 1,
+        nodes: [
+          {
+            target: [LONG_SELECTOR],
+            html: HTML_PROBE,
+            failureSummary: LONG_FAILURE_SUMMARY,
+          },
+        ],
+        guidance: { status: "UNAVAILABLE" },
+      },
+    ],
+    warnings: [],
+  };
+}
+
+// The assertion that actually catches clipping.
+//
+// A page-level scrollWidth check does not: the report card is
+// `overflow-hidden`, so an element that overflows it is clipped rather than
+// pushing the page sideways, and the page stays exactly 390px wide while the
+// text sits unreadable inside it. getBoundingClientRect() does not either --
+// it returns the visible border box, which is the clipped width. scrollWidth
+// is the element's own laid-out content width, so `scrollWidth > clientWidth`
+// is the direct statement "this element has content it is not showing".
+async function assertNoHorizontalOverflow(locator, description) {
+  const { scrollWidth, clientWidth } = await locator.evaluate((element) => ({
+    scrollWidth: element.scrollWidth,
+    clientWidth: element.clientWidth,
+  }));
+
+  assert.ok(
+    scrollWidth <= clientWidth,
+    `${description} overflows horizontally: scrollWidth ${scrollWidth}px vs clientWidth ${clientWidth}px`,
+  );
+}
+
+// Rendered, and rendered *visibly* -- innerText rather than textContent, so a
+// value the CSS hides does not count as displayed.
+async function assertRendersVisibly(locator, needle, description) {
+  const text = await locator.evaluate((element) => element.innerText);
+  assert.ok(
+    text.includes(needle),
+    `${description} does not visibly render its untrusted value`,
+  );
+}
+
+test(
+  "Report renders long and HTML-like untrusted values as inert, wrapped, unclipped text",
+  { timeout: 120_000 },
+  async () => {
+    let appServer;
+    let browser;
+
+    try {
+      appServer = await startNextServer();
+      browser = await chromium.launch({ headless: true });
+      // The narrow viewport the rest of this file uses.
+      const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+
+      await page.route("**/api/scans", async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ report: longStringReport() }),
+        });
+      });
+
+      await page.goto(appServer.url, { waitUntil: "domcontentloaded" });
+
+      const urlInput = page.getByLabel("URL trang cần quét", { exact: true });
+      await urlInput.fill("https://fixture.test/long");
+      await urlInput.press("Enter");
+
+      const reportHeading = page.getByRole("heading", { name: "Kết quả quét", exact: true });
+      await assertVisible(reportHeading);
+
+      const card = page.locator("article").filter({
+        has: page.locator("code", { hasText: "image-alt" }),
+      });
+      await card.locator("summary").first().click();
+
+      // The HTML-like probe must be text, never markup: neither the element it
+      // would create nor the side effect its handler would have.
+      assert.equal(await page.locator("#long-string-probe").count(), 0);
+      assert.equal(await page.evaluate(() => window.__pwned), undefined);
+
+      // Each untrusted field is checked on its own element. Checking them
+      // together hides which one failed and -- as the page-level check did --
+      // lets a clipped field pass on the strength of its neighbours.
+      const documentTitle = page
+        .locator("dt", { hasText: "Trang" })
+        .first()
+        .locator("xpath=following-sibling::dd[1]");
+      const finalUrl = page
+        .locator("dt", { hasText: "URL sau điều hướng" })
+        .first()
+        .locator("xpath=following-sibling::dd[1]");
+      const selector = card.locator("pre").filter({ hasText: LONG_UNBROKEN }).first();
+      const htmlExcerpt = card.locator("pre").filter({ hasText: "long-string-probe" }).first();
+      const failureSummary = card
+        .locator("h6", { hasText: "Tóm tắt lỗi từ axe" })
+        .first()
+        .locator("xpath=following-sibling::p[1]");
+
+      const untrustedFields = [
+        [documentTitle, LONG_UNBROKEN, "document title"],
+        [finalUrl, LONG_UNBROKEN, "final URL"],
+        [selector, LONG_UNBROKEN, "node selector"],
+        [htmlExcerpt, "long-string-probe", "HTML excerpt"],
+        [failureSummary, LONG_UNBROKEN, "failure summary"],
+      ];
+
+      for (const [locator, needle, description] of untrustedFields) {
+        await assertVisible(locator);
+        await assertRendersVisibly(locator, needle, description);
+        await assertNoHorizontalOverflow(locator, description);
+      }
+
+      // The card clips its children, so the per-field checks above are what
+      // prove they fit. This is the separate claim that nothing escapes the
+      // card either.
+      await assertNoHorizontalOverflow(card, "the report card");
+
+      // And that the page itself never scrolls sideways at 390px.
+      assert.equal(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+        ),
+        true,
+        "long unbroken untrusted values must not cause page-level horizontal overflow",
+      );
+
+      // Content stays reachable by keyboard from the report heading.
+      await reportHeading.focus();
+      await page.keyboard.press("Tab");
+      assert.equal(
+        await page.evaluate(() => {
+          const reportSection = document.querySelector('[aria-labelledby="report-title"]');
+          return (
+            document.activeElement !== document.body &&
+            reportSection?.contains(document.activeElement) === true
+          );
+        }),
+        true,
+      );
+
+      await assertNoAxeViolations(page, "report with long untrusted values");
+    } finally {
+      const cleanupResults = await Promise.allSettled([browser?.close(), appServer?.close()]);
+      const cleanupErrors = cleanupResults
+        .filter((result) => result.status === "rejected")
+        .map((result) => result.reason);
+
+      if (cleanupErrors.length > 0) {
+        throw new AggregateError(cleanupErrors, "E2E process cleanup failed");
+      }
+    }
+  },
+);
+
 async function assertVisible(locator) {
   await locator.waitFor({ state: "visible" });
   assert.equal(await locator.isVisible(), true);
